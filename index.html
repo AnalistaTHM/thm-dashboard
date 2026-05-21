@@ -191,7 +191,7 @@
   .period-tag-cmp  { background: #e8f0fe; color: var(--accent); }
   .summary-row {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     background: var(--border);
     gap: 1px;
   }
@@ -1394,13 +1394,23 @@
       </div>
       <!-- Cumplimiento -->
       <div class="summary-card" id="cardCumplimiento">
-        <div class="sc-label">% Cumplimiento</div>
+        <div class="sc-label">% Cumplido a la fecha</div>
         <div class="sc-val" id="sumCumplimiento">—</div>
-        <div class="sc-sub">vs presupuesto</div>
+        <div class="sc-sub">vs ppto corrido</div>
         <div class="sc-divider" id="cmpDivCumpl" style="display:none"></div>
         <div class="sc-cmp-val" id="cmpCumplimiento" style="display:none">—</div>
-        <div class="sc-cmp-sub" style="display:none">vs presupuesto</div>
+        <div class="sc-cmp-sub" style="display:none">vs ppto corrido</div>
         <div class="sc-delta" id="deltaCmpCumplimiento" style="display:none"></div>
+      </div>
+      <!-- Cumplimiento completo -->
+      <div class="summary-card" id="cardCumplimientoCompleto">
+        <div class="sc-label">% Cumplimiento completo</div>
+        <div class="sc-val" id="sumCumplimientoCompleto">—</div>
+        <div class="sc-sub">vs ppto mes completo</div>
+        <div class="sc-divider" id="cmpDivCumplCompleto" style="display:none"></div>
+        <div class="sc-cmp-val" id="cmpCumplimientoCompleto" style="display:none">—</div>
+        <div class="sc-cmp-sub" style="display:none">vs ppto mes completo</div>
+        <div class="sc-delta" id="deltaCmpCumplimientoCompleto" style="display:none"></div>
       </div>
       <!-- Margen -->
       <div class="summary-card" id="cardMargen">
@@ -1827,6 +1837,22 @@ function calcularCumplimiento(ventasPeriodo, desde, hasta, tiendaFiltro) {
   return ventasPeriodo / ppto;
 }
 
+function calcularCumplimientoCompleto(ventasPeriodo, hasta, tiendaFiltro) {
+  // Presupuesto total del mes de la fecha "hasta" seleccionada
+  if (!presupuestoData.length || !hasta) return null;
+  const anio = hasta.getFullYear();
+  const mes  = hasta.getMonth();
+
+  let ppto = 0;
+  presupuestoData.forEach(r => {
+    if (r.fecha.getFullYear() !== anio || r.fecha.getMonth() !== mes) return;
+    if (tiendaFiltro && tiendaFiltro !== 'todos' && normalizarCanal(r.tienda) !== tiendaFiltro) return;
+    ppto += r.ppto;
+  });
+  if (ppto === 0) return null;
+  return ventasPeriodo / ppto;
+}
+
 function cerrarSesion() {
   usuarioActual = { email: '', rol: '', tienda: '' };
   rawData = [];
@@ -2077,13 +2103,13 @@ function renderTabla() {
 
   // Helper to show/hide comparison elements
   function showCmpEls(show) {
-    ['cmpDivVentas','cmpDivUPT','cmpDivAVT','cmpDivTickets','cmpDivCumpl','cmpDivMargen'].forEach(id => {
+    ['cmpDivVentas','cmpDivUPT','cmpDivAVT','cmpDivTickets','cmpDivCumpl','cmpDivCumplCompleto','cmpDivMargen'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
-    ['cmpVentas','cmpUPT','cmpAVT','cmpTickets','cmpCumplimiento','cmpMargen'].forEach(id => {
+    ['cmpVentas','cmpUPT','cmpAVT','cmpTickets','cmpCumplimiento','cmpCumplimientoCompleto','cmpMargen'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
-    ['deltaCmpVentas','deltaCmpUPT','deltaCmpAVT','deltaCmpTickets','deltaCmpCumplimiento','deltaCmpMargen'].forEach(id => {
+    ['deltaCmpVentas','deltaCmpUPT','deltaCmpAVT','deltaCmpTickets','deltaCmpCumplimiento','deltaCmpCumplimientoCompleto','deltaCmpMargen'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
     document.querySelectorAll('.sc-cmp-sub').forEach(el => el.style.display = show ? '' : 'none');
@@ -2112,16 +2138,22 @@ function renderTabla() {
   const verMargen = usuarioActual.rol !== 'lider';
   document.getElementById('cardMargen').style.display = verMargen ? '' : 'none';
 
-  // Cumplimiento período actual
-  const rango = getFechaFiltro();
+  // Cumplimiento corrido (hasta la fecha del período)
   const cumpl = calcularCumplimiento(totalVentas, calState.principal.desde, calState.principal.hasta, canalSeleccionado);
   const cumplEl = document.getElementById('sumCumplimiento');
   if (cumpl !== null) {
     cumplEl.textContent = (cumpl * 100).toFixed(1) + '%';
     cumplEl.style.color = cumpl >= 1 ? 'var(--green)' : cumpl >= 0.8 ? 'var(--yellow)' : 'var(--red)';
-  } else {
-    cumplEl.textContent = '—';
-    cumplEl.style.color = '#888';
+  } else { cumplEl.textContent = '—'; cumplEl.style.color = '#888'; }
+
+  // Cumplimiento completo (ventas / ppto mes completo)
+  const cumplComp = calcularCumplimientoCompleto(totalVentas, calState.principal.hasta, canalSeleccionado);
+  const cumplCompEl = document.getElementById('sumCumplimientoCompleto');
+  if (cumplCompEl) {
+    if (cumplComp !== null) {
+      cumplCompEl.textContent = (cumplComp * 100).toFixed(1) + '%';
+      cumplCompEl.style.color = cumplComp >= 1 ? 'var(--green)' : cumplComp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+    } else { cumplCompEl.textContent = '—'; cumplCompEl.style.color = '#888'; }
   }
 
   // Período label
@@ -2172,7 +2204,7 @@ function renderTabla() {
     if (cmpMargen !== null && globalMargen !== null)
       setDelta('deltaCmpMargen', cmpMargen, globalMargen);
 
-    // Cumplimiento comparación
+    // Cumplimiento corrido comparación
     const cumplCmp = calcularCumplimiento(cmpVentas, sc.desde, sc.hasta, canalSeleccionado);
     const cumplCmpEl = document.getElementById('cmpCumplimiento');
     if (cumplCmpEl) {
@@ -2180,6 +2212,16 @@ function renderTabla() {
         cumplCmpEl.textContent = (cumplCmp * 100).toFixed(1) + '%';
         cumplCmpEl.style.color = cumplCmp >= 1 ? 'var(--green)' : cumplCmp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
       } else { cumplCmpEl.textContent = '—'; cumplCmpEl.style.color = '#888'; }
+    }
+
+    // Cumplimiento completo comparación
+    const cumplCompCmp = calcularCumplimientoCompleto(cmpVentas, sc.hasta, canalSeleccionado);
+    const cumplCompCmpEl = document.getElementById('cmpCumplimientoCompleto');
+    if (cumplCompCmpEl) {
+      if (cumplCompCmp !== null) {
+        cumplCompCmpEl.textContent = (cumplCompCmp * 100).toFixed(1) + '%';
+        cumplCompCmpEl.style.color = cumplCompCmp >= 1 ? 'var(--green)' : cumplCompCmp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+      } else { cumplCompCmpEl.textContent = '—'; cumplCompCmpEl.style.color = '#888'; }
     }
   }
 
