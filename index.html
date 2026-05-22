@@ -2526,9 +2526,15 @@ function procesarDesdeSupabase(rows) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.fecha || !r.nro_doc || !r.vendedor) continue;
+    // Parsear "2025-05-21" como hora local, no UTC, para evitar desfase de zona horaria
+    const fp = r.fecha.split('-');
+    const fechaLocal = fp.length === 3
+      ? new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]))
+      : null;
+    if (!fechaLocal) continue;
     result.push({
       tienda:     normalizarCanal(r.tienda      || ''),
-      fecha:      new Date(r.fecha + 'T00:00:00'),
+      fecha:      fechaLocal,
       nroDoc:     r.nro_doc     || '',
       vendedorId: r.vendedor_id || '',
       vendedor:   r.vendedor    || '',
