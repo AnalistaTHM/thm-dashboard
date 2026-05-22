@@ -1897,6 +1897,7 @@ function mostrarMensajeCumplimiento(elId, ventas, ppto) {
 }
 
 function cerrarSesion() {
+  clearTimeout(timeoutSesion);
   usuarioActual = { email: '', rol: '', tienda: '' };
   rawData = [];
   document.getElementById('dashboard').style.display    = 'none';
@@ -2381,14 +2382,44 @@ function applyMetas() {
 }
 
 // ═══════════════════════════════════════════
-// ESTADO DE SESIÓN
+// SEGURIDAD — TIMEOUT DE SESIÓN Y RATE LIMITING
 // ═══════════════════════════════════════════
+const TIMEOUT_MS      = 30 * 60 * 1000; // 30 minutos
+const MAX_INTENTOS    = 5;
+const BLOQUEO_MS      = 15 * 60 * 1000; // 15 minutos
+let timeoutSesion     = null;
+let intentosFallidos  = 0;
+let bloqueadoHasta    = null;
+
+function resetearTimeout() {
+  if (!usuarioActual.email) return; // no hay sesión activa
+  clearTimeout(timeoutSesion);
+  timeoutSesion = setTimeout(() => {
+    cerrarSesion();
+    // Mostrar mensaje de timeout en el login
+    document.getElementById('loginError').textContent = 'Sesión cerrada por inactividad. Ingresa de nuevo.';
+    document.getElementById('loginError').style.display = 'block';
+  }, TIMEOUT_MS);
+}
+
+// Resetear timeout con cualquier actividad del usuario
+['click','keydown','mousemove','scroll','touchstart'].forEach(ev => {
+  document.addEventListener(ev, resetearTimeout, { passive: true });
+});
 let usuarioActual = { email: '', rol: '' };
 
 // ═══════════════════════════════════════════
 // LOGIN — valida contra Google Sheet (hoja Usuarios)
 // ═══════════════════════════════════════════
 async function intentarLogin() {
+  // Rate limiting — bloqueo por intentos fallidos
+  if (bloqueadoHasta && Date.now() < bloqueadoHasta) {
+    const mins = Math.ceil((bloqueadoHasta - Date.now()) / 60000);
+    document.getElementById('loginError').textContent = `Demasiados intentos fallidos. Intenta en ${mins} minuto${mins !== 1 ? 's' : ''}.`;
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+
   const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPassword').value;
   const errorEl  = document.getElementById('loginError');
@@ -2410,24 +2441,32 @@ async function intentarLogin() {
     const json = await resp.json();
 
     if (json.ok) {
+      intentosFallidos = 0;
+      bloqueadoHasta   = null;
       usuarioActual = { email, rol: (json.rol || '').toLowerCase(), tienda: (json.tienda || '') };
       document.getElementById('loginScreen').style.display = 'none';
 
-      // Botón de carga solo para administradores
       if (usuarioActual.rol === 'administrador') {
         document.getElementById('uploadAdminBtn').style.display = 'flex';
       }
-
-      // Criterios de semáforo solo para admin y directivo
       const criteriosBar = document.getElementById('criteriosBar');
       if (criteriosBar) {
         criteriosBar.style.display = usuarioActual.rol === 'lider' ? 'none' : '';
       }
 
+      resetearTimeout(); // arrancar el timeout de sesión
       cargarDesdeSupabase();
       fetchPresupuesto();
     } else {
-      errorEl.textContent   = 'Correo o contraseña incorrectos';
+      intentosFallidos++;
+      if (intentosFallidos >= MAX_INTENTOS) {
+        bloqueadoHasta = Date.now() + BLOQUEO_MS;
+        intentosFallidos = 0;
+        errorEl.textContent = 'Demasiados intentos fallidos. Cuenta bloqueada por 15 minutos.';
+      } else {
+        const restantes = MAX_INTENTOS - intentosFallidos;
+        errorEl.textContent = `Correo o contraseña incorrectos. ${restantes} intento${restantes !== 1 ? 's' : ''} restante${restantes !== 1 ? 's' : ''}.`;
+      }
       errorEl.style.display = 'block';
     }
   } catch (err) {
