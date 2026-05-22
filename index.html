@@ -1483,6 +1483,7 @@ let rawData         = [];
 let presupuestoData = []; // {fecha: Date, tienda: str, ppto: number}[]
 let canalSeleccionado = 'todos';
 let todosCanales = [];
+let periodoActivo = 'todo'; // 'ayer' | 'mes' | 'anio' | 'todo' | 'custom'
 let sortField = 'ventas';
 let sortAsc = false;
 // ═══════════════════════════════════════════
@@ -1690,6 +1691,7 @@ function dateToISO8601(d) {
 }
 
 function aplicarFechaManual() {
+  periodoActivo = 'custom';
   var d1 = document.getElementById('desdePrincipal').value;
   var h1 = document.getElementById('hastaPrincipal').value;
   var d2 = document.getElementById('desdeComparacion').value;
@@ -1850,17 +1852,32 @@ function calcularCumplimiento(ventasPeriodo, desde, hasta, tiendaFiltro) {
   return { pct: ventasPeriodo / ppto, ppto };
 }
 
-function calcularCumplimientoCompleto(ventasPeriodo, hasta, tiendaFiltro) {
+function calcularCumplimientoCompleto(ventasPeriodo, desde, hasta, tiendaFiltro, esPeriodoComparativo) {
+  // Solo aplica para periodos 'mes' y 'anio'
+  if (periodoActivo === 'ayer' || periodoActivo === 'custom') return { nd: true };
   if (!presupuestoData.length || !hasta) return null;
-  const anio = hasta.getFullYear();
-  const mes  = hasta.getMonth();
 
   let ppto = 0;
-  presupuestoData.forEach(r => {
-    if (r.fecha.getFullYear() !== anio || r.fecha.getMonth() !== mes) return;
-    if (tiendaFiltro && tiendaFiltro !== 'todos' && normalizarCanal(r.tienda) !== tiendaFiltro) return;
-    ppto += r.ppto;
-  });
+
+  if (periodoActivo === 'mes') {
+    // Mes completo — principal: mes actual, comparativo: mismo mes año pasado
+    const anio = hasta.getFullYear();
+    const mes  = hasta.getMonth();
+    presupuestoData.forEach(r => {
+      if (r.fecha.getFullYear() !== anio || r.fecha.getMonth() !== mes) return;
+      if (tiendaFiltro && tiendaFiltro !== 'todos' && normalizarCanal(r.tienda) !== tiendaFiltro) return;
+      ppto += r.ppto;
+    });
+  } else if (periodoActivo === 'anio') {
+    // Año completo — suma todos los meses del año que existan en el Sheet
+    const anio = hasta.getFullYear();
+    presupuestoData.forEach(r => {
+      if (r.fecha.getFullYear() !== anio) return;
+      if (tiendaFiltro && tiendaFiltro !== 'todos' && normalizarCanal(r.tienda) !== tiendaFiltro) return;
+      ppto += r.ppto;
+    });
+  }
+
   if (ppto === 0) return null;
   return { pct: ventasPeriodo / ppto, ppto };
 }
@@ -1932,6 +1949,7 @@ function aplicarFechaRapida(tipo) {
 
   calState.principal   = { desde: desde,    hasta: hasta    };
   calState.comparacion = { desde: desdeCmp, hasta: hastaCmp };
+  periodoActivo = tipo;
 
   // Sincronizar inputs
   var d1 = document.getElementById('desdePrincipal');
@@ -2075,6 +2093,7 @@ function onPeriodoSelect() {
   const val = document.getElementById('periodoSelect').value;
   const customRow = document.getElementById('customDateRow');
   if (val === 'custom') {
+    periodoActivo = 'custom';
     if (customRow) customRow.style.display = '';
   } else {
     if (customRow) customRow.style.display = 'none';
@@ -2173,15 +2192,22 @@ function renderTabla() {
     mostrarMensajeCumplimiento('mensajeCumplimiento', totalVentas, cumplRes.ppto);
   } else { cumplEl.textContent = '—'; cumplEl.style.color = '#888'; document.getElementById('mensajeCumplimiento').innerHTML = ''; }
 
-  // Cumplimiento completo (ventas / ppto mes completo)
-  const cumplCompRes = calcularCumplimientoCompleto(totalVentas, calState.principal.hasta, canalSeleccionado);
+  // Cumplimiento completo (ventas / ppto mes o año completo)
+  const cumplCompRes = calcularCumplimientoCompleto(totalVentas, calState.principal.desde, calState.principal.hasta, canalSeleccionado, false);
   const cumplCompEl  = document.getElementById('sumCumplimientoCompleto');
+  const mensCompEl   = document.getElementById('mensajeCumplimientoCompleto');
   if (cumplCompEl) {
-    if (cumplCompRes !== null) {
+    if (cumplCompRes === null) {
+      cumplCompEl.textContent = '—'; cumplCompEl.style.color = '#888';
+      if (mensCompEl) mensCompEl.innerHTML = '';
+    } else if (cumplCompRes.nd) {
+      cumplCompEl.textContent = 'N/D'; cumplCompEl.style.color = '#aaa';
+      if (mensCompEl) mensCompEl.innerHTML = '';
+    } else {
       cumplCompEl.textContent = (cumplCompRes.pct * 100).toFixed(1) + '%';
       cumplCompEl.style.color = cumplCompRes.pct >= 1 ? 'var(--green)' : cumplCompRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
-      mostrarMensajeCumplimiento('mensajeCumplimientoCompleto', totalVentas, cumplCompRes.ppto);
-    } else { cumplCompEl.textContent = '—'; cumplCompEl.style.color = '#888'; document.getElementById('mensajeCumplimientoCompleto').innerHTML = ''; }
+      if (mensCompEl) mostrarMensajeCumplimiento('mensajeCumplimientoCompleto', totalVentas, cumplCompRes.ppto);
+    }
   }
 
   // Período label
@@ -2243,13 +2269,17 @@ function renderTabla() {
     }
 
     // Cumplimiento completo comparación
-    const cumplCompCmpRes = calcularCumplimientoCompleto(cmpVentas, sc.hasta, canalSeleccionado);
+    const cumplCompCmpRes = calcularCumplimientoCompleto(cmpVentas, sc.desde, sc.hasta, canalSeleccionado, true);
     const cumplCompCmpEl  = document.getElementById('cmpCumplimientoCompleto');
     if (cumplCompCmpEl) {
-      if (cumplCompCmpRes !== null) {
+      if (cumplCompCmpRes === null) {
+        cumplCompCmpEl.textContent = '—'; cumplCompCmpEl.style.color = '#888';
+      } else if (cumplCompCmpRes.nd) {
+        cumplCompCmpEl.textContent = 'N/D'; cumplCompCmpEl.style.color = '#aaa';
+      } else {
         cumplCompCmpEl.textContent = (cumplCompCmpRes.pct * 100).toFixed(1) + '%';
         cumplCompCmpEl.style.color = cumplCompCmpRes.pct >= 1 ? 'var(--green)' : cumplCompCmpRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
-      } else { cumplCompCmpEl.textContent = '—'; cumplCompCmpEl.style.color = '#888'; }
+      }
     }
   }
 
