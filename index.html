@@ -245,6 +245,14 @@
     margin-top: 6px;
     min-height: 18px;
   }
+  .sc-mensaje {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
   .delta-pos { color: var(--green); font-weight: 700; font-size: 12px; }
   .delta-neg { color: var(--red);   font-weight: 700; font-size: 12px; }
   .delta-neu { color: var(--text3); font-weight: 700; font-size: 12px; }
@@ -1397,6 +1405,7 @@
         <div class="sc-label">% Cumplido a la fecha</div>
         <div class="sc-val" id="sumCumplimiento">—</div>
         <div class="sc-sub">vs ppto corrido</div>
+        <div class="sc-mensaje" id="mensajeCumplimiento"></div>
         <div class="sc-divider" id="cmpDivCumpl" style="display:none"></div>
         <div class="sc-cmp-val" id="cmpCumplimiento" style="display:none">—</div>
         <div class="sc-cmp-sub" style="display:none">vs ppto corrido</div>
@@ -1407,6 +1416,7 @@
         <div class="sc-label">% Cumplimiento completo</div>
         <div class="sc-val" id="sumCumplimientoCompleto">—</div>
         <div class="sc-sub">vs ppto mes completo</div>
+        <div class="sc-mensaje" id="mensajeCumplimientoCompleto"></div>
         <div class="sc-divider" id="cmpDivCumplCompleto" style="display:none"></div>
         <div class="sc-cmp-val" id="cmpCumplimientoCompleto" style="display:none">—</div>
         <div class="sc-cmp-sub" style="display:none">vs ppto mes completo</div>
@@ -1478,17 +1488,28 @@ let sortAsc = false;
 // ═══════════════════════════════════════════
 // CRITERIOS DE SEMÁFORO POR TIPO DE TIENDA
 // ═══════════════════════════════════════════
-const TIENDAS_TIPO_A = [
+const TIENDAS_TIPO_A_RAW = [
   'PDV ANDINO BOGOTA',
   'PDV GRAN ESTACION BOGOTA',
   'PDV TESORO MEDELLIN',
   'PDV UNICENTRO BOGOTA'
 ];
-const TIENDAS_TIPO_B = [
+const TIENDAS_TIPO_B_RAW = [
   'PDV HACIENDA STA BARBARA BOGOTA',
   'PDV SANTA FE BOGOTA',
   'PDV TITAN PLAZA'
 ];
+// También en nombres normalizados (después de CANAL_MAP)
+const TIENDAS_TIPO_A_NORM = ['Andino','Gran Estacion','Tesoro','Unicentro'];
+const TIENDAS_TIPO_B_NORM = ['Hacienda','Santa Fe','Titan'];
+
+function getTipoTienda(tienda) {
+  const t = (tienda || '').trim();
+  const tUp = t.toUpperCase();
+  if (TIENDAS_TIPO_A_RAW.includes(tUp) || TIENDAS_TIPO_A_NORM.includes(t)) return 'A';
+  if (TIENDAS_TIPO_B_RAW.includes(tUp) || TIENDAS_TIPO_B_NORM.includes(t)) return 'B';
+  return 'A'; // default
+}
 
 const CRITERIOS = {
   A: {
@@ -1502,13 +1523,6 @@ const CRITERIOS = {
     ppto: { verde: 1.0,    amarillo: 0.8 }
   }
 };
-
-function getTipoTienda(tienda) {
-  const t = (tienda || '').toUpperCase().trim();
-  if (TIENDAS_TIPO_A.includes(t)) return 'A';
-  if (TIENDAS_TIPO_B.includes(t)) return 'B';
-  return 'A'; // default
-}
 
 function semaforoTipo(valor, tipo, metrica) {
   const c = CRITERIOS[tipo][metrica];
@@ -1827,18 +1841,16 @@ function calcularCumplimiento(ventasPeriodo, desde, hasta, tiendaFiltro) {
     const fd = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate());
     if (desdeD && fd < desdeD) return;
     if (hastaD && fd > hastaD) return;
-    // Si hay filtro de canal, comparar con el nombre normalizado de la tienda del presupuesto
     if (tiendaFiltro && tiendaFiltro !== 'todos') {
       if (normalizarCanal(r.tienda) !== tiendaFiltro) return;
     }
     ppto += r.ppto;
   });
   if (ppto === 0) return null;
-  return ventasPeriodo / ppto;
+  return { pct: ventasPeriodo / ppto, ppto };
 }
 
 function calcularCumplimientoCompleto(ventasPeriodo, hasta, tiendaFiltro) {
-  // Presupuesto total del mes de la fecha "hasta" seleccionada
   if (!presupuestoData.length || !hasta) return null;
   const anio = hasta.getFullYear();
   const mes  = hasta.getMonth();
@@ -1850,7 +1862,21 @@ function calcularCumplimientoCompleto(ventasPeriodo, hasta, tiendaFiltro) {
     ppto += r.ppto;
   });
   if (ppto === 0) return null;
-  return ventasPeriodo / ppto;
+  return { pct: ventasPeriodo / ppto, ppto };
+}
+
+function mostrarMensajeCumplimiento(elId, ventas, ppto) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!ppto || ppto === 0) { el.innerHTML = ''; return; }
+  const faltante = ppto - ventas;
+  if (faltante <= 0) {
+    el.style.color = 'var(--green)';
+    el.innerHTML = '🎉 ¡VAS CUMPLIENDO PRESUPUESTO!<br>¡FELICIDADES! Vamos por más 🚀';
+  } else {
+    el.style.color = 'var(--red)';
+    el.innerHTML = `Faltan ${formatPeso(faltante)} para cumplir meta`;
+  }
 }
 
 function cerrarSesion() {
@@ -2139,21 +2165,23 @@ function renderTabla() {
   document.getElementById('cardMargen').style.display = verMargen ? '' : 'none';
 
   // Cumplimiento corrido (hasta la fecha del período)
-  const cumpl = calcularCumplimiento(totalVentas, calState.principal.desde, calState.principal.hasta, canalSeleccionado);
-  const cumplEl = document.getElementById('sumCumplimiento');
-  if (cumpl !== null) {
-    cumplEl.textContent = (cumpl * 100).toFixed(1) + '%';
-    cumplEl.style.color = cumpl >= 1 ? 'var(--green)' : cumpl >= 0.8 ? 'var(--yellow)' : 'var(--red)';
-  } else { cumplEl.textContent = '—'; cumplEl.style.color = '#888'; }
+  const cumplRes = calcularCumplimiento(totalVentas, calState.principal.desde, calState.principal.hasta, canalSeleccionado);
+  const cumplEl  = document.getElementById('sumCumplimiento');
+  if (cumplRes !== null) {
+    cumplEl.textContent = (cumplRes.pct * 100).toFixed(1) + '%';
+    cumplEl.style.color = cumplRes.pct >= 1 ? 'var(--green)' : cumplRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+    mostrarMensajeCumplimiento('mensajeCumplimiento', totalVentas, cumplRes.ppto);
+  } else { cumplEl.textContent = '—'; cumplEl.style.color = '#888'; document.getElementById('mensajeCumplimiento').innerHTML = ''; }
 
   // Cumplimiento completo (ventas / ppto mes completo)
-  const cumplComp = calcularCumplimientoCompleto(totalVentas, calState.principal.hasta, canalSeleccionado);
-  const cumplCompEl = document.getElementById('sumCumplimientoCompleto');
+  const cumplCompRes = calcularCumplimientoCompleto(totalVentas, calState.principal.hasta, canalSeleccionado);
+  const cumplCompEl  = document.getElementById('sumCumplimientoCompleto');
   if (cumplCompEl) {
-    if (cumplComp !== null) {
-      cumplCompEl.textContent = (cumplComp * 100).toFixed(1) + '%';
-      cumplCompEl.style.color = cumplComp >= 1 ? 'var(--green)' : cumplComp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
-    } else { cumplCompEl.textContent = '—'; cumplCompEl.style.color = '#888'; }
+    if (cumplCompRes !== null) {
+      cumplCompEl.textContent = (cumplCompRes.pct * 100).toFixed(1) + '%';
+      cumplCompEl.style.color = cumplCompRes.pct >= 1 ? 'var(--green)' : cumplCompRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+      mostrarMensajeCumplimiento('mensajeCumplimientoCompleto', totalVentas, cumplCompRes.ppto);
+    } else { cumplCompEl.textContent = '—'; cumplCompEl.style.color = '#888'; document.getElementById('mensajeCumplimientoCompleto').innerHTML = ''; }
   }
 
   // Período label
@@ -2205,22 +2233,22 @@ function renderTabla() {
       setDelta('deltaCmpMargen', cmpMargen, globalMargen);
 
     // Cumplimiento corrido comparación
-    const cumplCmp = calcularCumplimiento(cmpVentas, sc.desde, sc.hasta, canalSeleccionado);
-    const cumplCmpEl = document.getElementById('cmpCumplimiento');
+    const cumplCmpRes = calcularCumplimiento(cmpVentas, sc.desde, sc.hasta, canalSeleccionado);
+    const cumplCmpEl  = document.getElementById('cmpCumplimiento');
     if (cumplCmpEl) {
-      if (cumplCmp !== null) {
-        cumplCmpEl.textContent = (cumplCmp * 100).toFixed(1) + '%';
-        cumplCmpEl.style.color = cumplCmp >= 1 ? 'var(--green)' : cumplCmp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+      if (cumplCmpRes !== null) {
+        cumplCmpEl.textContent = (cumplCmpRes.pct * 100).toFixed(1) + '%';
+        cumplCmpEl.style.color = cumplCmpRes.pct >= 1 ? 'var(--green)' : cumplCmpRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
       } else { cumplCmpEl.textContent = '—'; cumplCmpEl.style.color = '#888'; }
     }
 
     // Cumplimiento completo comparación
-    const cumplCompCmp = calcularCumplimientoCompleto(cmpVentas, sc.hasta, canalSeleccionado);
-    const cumplCompCmpEl = document.getElementById('cmpCumplimientoCompleto');
+    const cumplCompCmpRes = calcularCumplimientoCompleto(cmpVentas, sc.hasta, canalSeleccionado);
+    const cumplCompCmpEl  = document.getElementById('cmpCumplimientoCompleto');
     if (cumplCompCmpEl) {
-      if (cumplCompCmp !== null) {
-        cumplCompCmpEl.textContent = (cumplCompCmp * 100).toFixed(1) + '%';
-        cumplCompCmpEl.style.color = cumplCompCmp >= 1 ? 'var(--green)' : cumplCompCmp >= 0.8 ? 'var(--yellow)' : 'var(--red)';
+      if (cumplCompCmpRes !== null) {
+        cumplCompCmpEl.textContent = (cumplCompCmpRes.pct * 100).toFixed(1) + '%';
+        cumplCompCmpEl.style.color = cumplCompCmpRes.pct >= 1 ? 'var(--green)' : cumplCompCmpRes.pct >= 0.8 ? 'var(--yellow)' : 'var(--red)';
       } else { cumplCompCmpEl.textContent = '—'; cumplCompCmpEl.style.color = '#888'; }
     }
   }
@@ -2248,7 +2276,7 @@ function renderTabla() {
 
     const labels = { green: 'En meta', yellow: 'Cerca', red: 'Por debajo' };
     const barPct = maxVentas > 0 ? (a.ventasTotales / maxVentas) * 100 : 0;
-    const barColor = estadoGeneral === 'green' ? 'var(--green)' : estadoGeneral === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const barColor = '#111111'; // Ventas no tiene semáforo — barra siempre neutra
 
     const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
     const rankLabel = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
