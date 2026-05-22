@@ -759,6 +759,7 @@
 
   .sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.5; }
   .sorted .sort-icon { opacity: 1; }
+  .col-cumpl { text-align: center; white-space: nowrap; }
 
   /* LOADING */
   #loadingState {
@@ -1454,6 +1455,8 @@
           <th class="col-tickets" onclick="sortBy('tickets')">Tickets <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('upt')">UPT <span class="sort-icon">↕</span></th>
           <th class="col-avt" onclick="sortBy('avt')">AVT <span class="sort-icon">↕</span></th>
+          <th class="col-cumpl">Ppto</th>
+          <th class="col-cumpl">% Cumpl.</th>
           <th class="col-estado">Estado</th>
         </tr>
       </thead>
@@ -1553,6 +1556,9 @@ let metas = { upt: 2.5, avt: 250000, ventas: 5000000 };
 
 // Items a excluir del UPT y AVT
 const EXCLUIR_UPT = ['BOLSA', 'CAJA'];
+
+// Vendedores a excluir de todos los indicadores
+const EXCLUIR_VENDEDORES = ['THERMOS S.A.S', 'THERMOS SAS', 'THERMOS S.A.S.'];
 
 // ═══════════════════════════════════════════
 // MAPEO DE CANALES
@@ -2026,7 +2032,7 @@ function filtrarDatos(rangoFecha) {
 // ═══════════════════════════════════════════
 // AGREGACIÓN POR ASESOR
 // ═══════════════════════════════════════════
-function agregarPorAsesor(datos) {
+function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
 
   // Paso 1: tickets validos por asesor = docs con valor acumulado > 0
   const valorPorDoc = {};
@@ -2080,31 +2086,72 @@ function agregarPorAsesor(datos) {
     }
   });
 
+  const pptoPorAsesor = calcularPptoPorAsesor(datos, rangoDesde, rangoHasta);
+
   return Object.values(mapa).map(a => {
-    const tickets = a.tickets.size || 1;
+    const tickets   = a.tickets.size || 1;
+    const keyAsesor = a.vendedorId || a.vendedor;
+    const pptoAsig  = pptoPorAsesor[keyAsesor] || 0;
     return {
-      vendedor: a.vendedor,
-      vendedorId: a.vendedorId,
-      tiendas: Array.from(a.tiendas).join(', '),
+      vendedor:      a.vendedor,
+      vendedorId:    a.vendedorId,
+      tiendas:       Array.from(a.tiendas).join(', '),
       tiendaPrincipal: Array.from(a.tiendas)[0] || '',
-      tickets: a.tickets.size,
+      tickets:       a.tickets.size,
       ventasTotales: a.ventasTotales,
-      ventasNetas: a.ventasNetas,
+      ventasNetas:   a.ventasNetas,
       unidadesNetas: a.unidadesNetas,
-      costoMPTotal: a.costoMPTotal,
-      upt: a.unidadesNetas / tickets,
-      avt: a.ventasNetas / tickets,
-      // Margen Bruto = (ValorSinIVA - CostoMP) / ValorSinIVA
-      margenBruto: a.ventasNetas > 0
+      costoMPTotal:  a.costoMPTotal,
+      upt:           a.unidadesNetas / tickets,
+      avt:           a.ventasNetas / tickets,
+      margenBruto:   a.ventasNetas > 0
         ? ((a.ventasNetas / 1.19) - a.costoMPTotal) / (a.ventasNetas / 1.19)
         : null,
+      pptoAsignado:  pptoAsig,
+      cumplPpto:     pptoAsig > 0 ? a.ventasTotales / pptoAsig : null,
     };
   });
 }
 
-// ═══════════════════════════════════════════
-// RENDER CANALES
-// ═══════════════════════════════════════════
+function calcularPptoPorAsesor(datos, rangoDesde, rangoHasta) {
+  // Para cada (tienda, fecha) en el período, divide el presupuesto entre los asesores activos
+  // Un asesor es "activo" en una tienda un día si tiene al menos 1 venta ese día en esa tienda
+  if (!presupuestoData.length) return {};
+
+  // Construir mapa: tienda+fecha → Set de vendedorIds activos
+  const activosPorTiendaFecha = {};
+  datos.forEach(r => {
+    if (!r.fecha) return;
+    const fd = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate());
+    if (rangoDesde && fd < rangoDesde) return;
+    if (rangoHasta && fd > rangoHasta) return;
+    const key = r.tienda + '|' + fd.getTime();
+    if (!activosPorTiendaFecha[key]) activosPorTiendaFecha[key] = { tienda: r.tienda, fecha: fd, asesores: new Set() };
+    activosPorTiendaFecha[key].asesores.add(r.vendedorId || r.vendedor);
+  });
+
+  // Para cada (tienda, fecha), buscar el presupuesto y dividirlo entre los asesores activos
+  // Resultado: vendedorId → ppto acumulado
+  const pptoPorAsesor = {};
+  Object.values(activosPorTiendaFecha).forEach(({ tienda, fecha, asesores }) => {
+    // Buscar presupuesto de esa tienda en esa fecha
+    const fd = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    let pptoTiendaDia = 0;
+    presupuestoData.forEach(p => {
+      const pd = new Date(p.fecha.getFullYear(), p.fecha.getMonth(), p.fecha.getDate());
+      if (pd.getTime() !== fd.getTime()) return;
+      if (normalizarCanal(p.tienda) !== tienda) return;
+      pptoTiendaDia += p.ppto;
+    });
+    if (pptoTiendaDia === 0 || asesores.size === 0) return;
+    const pptoXAsesor = pptoTiendaDia / asesores.size;
+    asesores.forEach(vid => {
+      pptoPorAsesor[vid] = (pptoPorAsesor[vid] || 0) + pptoXAsesor;
+    });
+  });
+
+  return pptoPorAsesor;
+}
 function renderCanales() {
   const sel = document.getElementById('canalSelect');
   if (!sel) return;
@@ -2162,8 +2209,9 @@ function formatPesoFull(n) {
 // RENDER TABLA
 // ═══════════════════════════════════════════
 function renderTabla() {
-  const datos = filtrarDatos();
-  const asesores = agregarPorAsesor(datos);
+  const datos   = filtrarDatos();
+  const rFiltro = getFechaFiltro();
+  const asesores = agregarPorAsesor(datos, rFiltro.desde, rFiltro.hasta);
 
   // Ordenar
   const field = document.getElementById('sortSelect').value;
@@ -2268,7 +2316,7 @@ function renderTabla() {
     if (cmpLblEl) cmpLblEl.textContent = 'vs : ' + labelCmp;
 
     const datosCmp    = filtrarDatos(rangoCmp);
-    const asesoresCmp = agregarPorAsesor(datosCmp);
+    const asesoresCmp = agregarPorAsesor(datosCmp, rangoCmp.desde, rangoCmp.hasta);
     const cmpVentas   = asesoresCmp.reduce((s, a) => s + a.ventasTotales, 0);
     const cmpTickets  = asesoresCmp.reduce((s, a) => s + a.tickets, 0);
     const cmpUnidades = asesoresCmp.reduce((s, a) => s + a.unidadesNetas, 0);
@@ -2373,6 +2421,16 @@ function renderTabla() {
           <span class="dot"></span>
           ${formatPeso(a.avt)}
         </span>
+      </td>
+      <td class="col-cumpl">
+        ${a.pptoAsignado > 0
+          ? `<span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">${formatPeso(a.pptoAsignado)}</span>`
+          : '<span style="color:var(--text3);font-size:12px;">—</span>'}
+      </td>
+      <td class="col-cumpl">
+        ${a.cumplPpto !== null
+          ? `<span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${a.cumplPpto >= 1 ? 'var(--green)' : a.cumplPpto >= 0.8 ? 'var(--yellow)' : 'var(--red)'};">${(a.cumplPpto * 100).toFixed(1)}%</span>`
+          : '<span style="color:var(--text3);font-size:12px;">—</span>'}
       </td>
       <td class="col-estado">
         <span class="semaforo ${estadoGeneral}">
@@ -2532,6 +2590,9 @@ function procesarDesdeSupabase(rows) {
       ? new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]))
       : null;
     if (!fechaLocal) continue;
+    // Excluir vendedores internos
+    const vendNorm = (r.vendedor || '').trim().toUpperCase();
+    if (EXCLUIR_VENDEDORES.some(e => vendNorm.includes(e.toUpperCase()))) continue;
     result.push({
       tienda:     normalizarCanal(r.tienda      || ''),
       fecha:      fechaLocal,
