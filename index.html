@@ -768,9 +768,9 @@
 
   @media (max-width: 768px) {
     .cal-popup { width: calc(100vw - 32px); left: 16px !important; }
-    .cal-trigger { min-width: 110px; font-size: 10px; padding: 5px 8px; }
+    .cal-trigger { min-width: 100px; font-size: 10px; padding: 5px 8px; }
 
-    /* ── Header compacto ── */
+    /* ── Header ── */
     header { padding: 7px 10px; gap: 6px; flex-wrap: nowrap; }
     .logo { font-size: 17px; letter-spacing: 4px; }
     .logo span { font-size: 8px; letter-spacing: 2px; }
@@ -783,27 +783,46 @@
     .pdf-btn { padding: 5px 9px; font-size: 10px; gap: 3px; }
     .pdf-btn svg { display: none; }
 
-    /* ── Filtros ── */
-    .filters { padding: 6px 10px; gap: 5px; flex-direction: column; align-items: flex-start; }
-    .filters-row1 { padding: 7px 10px; }
-    .filters-row2 { padding: 8px 10px; gap: 10px; }
-    .date-range-wrap { gap: 5px; flex-wrap: wrap; }
-    .date-input { font-size: 10px; padding: 4px 7px; width: 120px; }
-    .filter-sep { width: 100%; height: 1px; }
+    /* ── Semáforo criterios: una sola línea, letra muy pequeña ── */
+    #criteriosBar {
+      padding: 4px 10px !important;
+      gap: 8px !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    /* Forzar tamaño en todos los descendientes (los inline-style pisan el CSS) */
+    #criteriosBar span,
+    #criteriosBar div { font-size: 7px !important; gap: 6px !important; }
+    #criteriosBar > span { font-size: 7px !important; letter-spacing: 0.5px !important; }
+
+    /* ── Filtros: UNA sola fila con scroll horizontal ── */
+    .filters-wrap { overflow-x: auto; }
+    .filters-row1 {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      padding: 6px 10px !important;
+      gap: 6px !important;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    .filter-label { font-size: 8px; white-space: nowrap; flex-shrink: 0; }
+    .filter-select { font-size: 10px; padding: 4px 5px; flex-shrink: 0; }
+    /* Separador vuelve a ser vertical */
+    .filter-sep { width: 1px !important; height: 14px !important; flex-shrink: 0; }
     .canales-filter { gap: 5px; }
     .canal-chip { font-size: 10px; padding: 3px 8px; }
-    .filter-select { font-size: 11px; padding: 4px 6px; }
-    .filter-label { font-size: 9px; }
+    .date-range-wrap { gap: 5px; flex-wrap: wrap; }
+    .date-input { font-size: 10px; padding: 4px 7px; width: 120px; }
+    .filters-row2 { padding: 8px 10px; gap: 10px; }
 
-    /* ── Summary cards: 4 + 3 layout ── */
+    /* ── Summary cards: 4 + 3 ── */
     .summary-row { grid-template-columns: repeat(4, 1fr); }
     .summary-card { padding: 7px 5px; }
-    .sc-label {
-      font-size: 6.5px;
-      letter-spacing: 0.8px;
-      margin-bottom: 4px;
-      line-height: 1.2;
-    }
+    .sc-label { font-size: 6.5px; letter-spacing: 0.8px; margin-bottom: 4px; line-height: 1.2; }
     .sc-val { font-size: 14px; letter-spacing: -0.3px; }
     .sc-sub { font-size: 7.5px; margin-top: 2px; }
     .sc-divider { margin: 6px 0 5px; }
@@ -815,52 +834,55 @@
     .summary-period-bar { padding: 5px 10px; gap: 8px; }
     .period-tag { font-size: 8px; padding: 2px 7px; }
 
-    /* Semáforo bar: compacto en móvil */
-    #criteriosBar {
-      padding: 5px 10px;
-      gap: 6px;
-      font-size: 8px;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-    }
-
     .metas-grid { grid-template-columns: 1fr; }
     .main-content { padding: 8px 10px; }
     .section-title { font-size: 12px; margin-bottom: 10px; }
     .legend { gap: 12px; margin-bottom: 12px; }
     .legend-item { font-size: 10px; }
 
-    /* ── Ranking: scroll horizontal, TODAS las columnas visibles ── */
+    /* ── Ranking: scroll horizontal, TODAS las columnas, fuente unificada ── */
     .ranking-scroll-wrap {
       margin: 0 -10px;
       border-left: none;
       border-right: none;
       border-radius: 0;
     }
-    /* Ancho mínimo garantiza que todas las cols aparezcan en scroll */
     .ranking-table { min-width: 600px; }
-    .ranking-table th { padding: 7px 5px; font-size: 9px; letter-spacing: 0.5px; }
-    .ranking-table td { padding: 8px 5px; font-size: 10px; }
+
+    /* Fuente base unificada para toda la tabla en móvil */
+    .ranking-table th { padding: 6px 5px; font-size: 8.5px; letter-spacing: 0.4px; }
+    .ranking-table td { padding: 7px 5px; font-size: 10px; }
+
+    /* Forzar el mismo tamaño en TODOS los elementos de cada celda */
+    .ranking-table td .metric-value,
+    .ranking-table td .semaforo,
+    .ranking-table td .tickets-badge,
+    .ranking-table td .cell-ppto,
+    .ranking-table td .cell-ppto-vacio,
+    .ranking-table td .cell-cumpl { font-size: 10px; }
+
+    /* Nombre del asesor: mismo tamaño base */
+    .ranking-table td .asesor-name { font-size: 10px; }
+    .ranking-table td .asesor-tienda { font-size: 8px; margin-top: 1px; }
+
+    /* Columna asesor sticky */
     .ranking-table th.col-sticky-2,
     .ranking-table td.col-sticky-2 { min-width: 100px; max-width: 110px; }
-    /* Columna # */
     .ranking-table th.col-sticky,
     .ranking-table td.col-sticky { padding-left: 8px; padding-right: 4px; }
-    .bar-track { width: 28px; }
-    .bar-wrap { gap: 4px; }
-    .asesor-name { font-size: 10px; }
-    .asesor-tienda { font-size: 8.5px; margin-top: 1px; }
-    .semaforo { font-size: 9.5px; padding: 2px 5px; gap: 4px; }
+
+    /* Semáforo compacto */
+    .semaforo { font-size: 10px; padding: 2px 5px; gap: 3px; }
     .dot { width: 5px; height: 5px; }
-    .tickets-badge { font-size: 9.5px; padding: 1px 5px; }
-    .metric-value { font-size: 10px; }
+    .tickets-badge { font-size: 10px; padding: 1px 5px; }
+    .bar-track { width: 26px; }
+    .bar-wrap { gap: 3px; }
   }
 
   @media (max-width: 420px) {
-    /* En pantallas muy pequeñas ajustar col-asesor aún más */
     .ranking-table th.col-sticky-2,
     .ranking-table td.col-sticky-2 { min-width: 88px; max-width: 95px; }
-    .asesor-name { font-size: 9.5px; }
+    .ranking-table td .asesor-name { font-size: 9.5px; }
     .summary-row { grid-template-columns: repeat(4, 1fr); }
     .sc-val { font-size: 13px; }
     .date-input { width: 110px; font-size: 10px; }
@@ -924,6 +946,11 @@
   .sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.5; }
   .sorted .sort-icon { opacity: 1; }
   .col-cumpl { text-align: center; white-space: nowrap; }
+
+  /* Celdas de Ppto y % Cumpl — tamaño controlado por CSS, no inline */
+  .cell-ppto       { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+  .cell-ppto-vacio { font-size: 12px; color: var(--text3); }
+  .cell-cumpl      { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; }
 
   /* LOADING */
   #loadingState {
@@ -2617,13 +2644,13 @@ function renderTabla() {
       </td>
       <td class="col-cumpl">
         ${a.pptoAsignado > 0
-          ? `<span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">${formatPeso(a.pptoAsignado)}</span>`
-          : '<span style="color:var(--text3);font-size:12px;">—</span>'}
+          ? `<span class="cell-ppto">${formatPeso(a.pptoAsignado)}</span>`
+          : '<span class="cell-ppto-vacio">—</span>'}
       </td>
       <td class="col-cumpl">
         ${a.cumplPpto !== null
-          ? `<span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${a.cumplPpto >= 1 ? 'var(--green)' : a.cumplPpto >= 0.8 ? 'var(--yellow)' : 'var(--red)'};">${(a.cumplPpto * 100).toFixed(1)}%</span>`
-          : '<span style="color:var(--text3);font-size:12px;">—</span>'}
+          ? `<span class="cell-cumpl" style="color:${a.cumplPpto >= 1 ? 'var(--green)' : a.cumplPpto >= 0.8 ? 'var(--yellow)' : 'var(--red)'};">${(a.cumplPpto * 100).toFixed(1)}%</span>`
+          : '<span class="cell-ppto-vacio">—</span>'}
       </td>
       <td class="col-estado">
         <span class="semaforo ${estadoGeneral}">
