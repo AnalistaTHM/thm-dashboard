@@ -768,66 +768,102 @@
 
   @media (max-width: 768px) {
     .cal-popup { width: calc(100vw - 32px); left: 16px !important; }
-    .cal-trigger { min-width: 120px; font-size: 10px; padding: 5px 10px; }
+    .cal-trigger { min-width: 110px; font-size: 10px; padding: 5px 8px; }
 
-    /* Header compacto */
-    header { padding: 8px 12px; gap: 8px; flex-wrap: nowrap; }
-    .logo { font-size: 18px; letter-spacing: 4px; }
-    .logo span { font-size: 9px; letter-spacing: 2px; }
-    .header-right { gap: 6px; }
-    .upload-admin-btn { padding: 6px 10px; font-size: 11px; letter-spacing: 0.5px; gap: 4px; }
-    .upload-admin-btn svg { display: none; } /* ocultar icono en móvil para ahorrar espacio */
-    .logout-btn { padding: 6px 10px; font-size: 11px; gap: 4px; }
+    /* ── Header compacto ── */
+    header { padding: 7px 10px; gap: 6px; flex-wrap: nowrap; }
+    .logo { font-size: 17px; letter-spacing: 4px; }
+    .logo span { font-size: 8px; letter-spacing: 2px; }
+    .header-right { gap: 5px; }
+    .upload-admin-btn { padding: 5px 9px; font-size: 10px; letter-spacing: 0.3px; gap: 4px; }
+    .upload-admin-btn svg { display: none; }
+    .logout-btn { padding: 5px 9px; font-size: 10px; gap: 3px; }
     .logout-btn svg { display: none; }
-    .last-update { font-size: 9px; line-height: 1.3; }
-    .pdf-btn { padding: 6px 10px; font-size: 11px; gap: 4px; }
+    .last-update { font-size: 8px; line-height: 1.3; }
+    .pdf-btn { padding: 5px 9px; font-size: 10px; gap: 3px; }
     .pdf-btn svg { display: none; }
 
-    .filters { padding: 8px 12px; gap: 6px; flex-direction: column; align-items: flex-start; }
-    .filters-row1 { padding: 8px 12px; }
-    .filters-row2 { padding: 10px 12px; gap: 12px; }
-    .date-range-wrap { gap: 6px; flex-wrap: wrap; }
-    .date-input { font-size: 11px; padding: 5px 8px; width: 130px; }
+    /* ── Filtros ── */
+    .filters { padding: 6px 10px; gap: 5px; flex-direction: column; align-items: flex-start; }
+    .filters-row1 { padding: 7px 10px; }
+    .filters-row2 { padding: 8px 10px; gap: 10px; }
+    .date-range-wrap { gap: 5px; flex-wrap: wrap; }
+    .date-input { font-size: 10px; padding: 4px 7px; width: 120px; }
     .filter-sep { width: 100%; height: 1px; }
-    .canales-filter { gap: 6px; }
-    .canal-chip { font-size: 11px; padding: 4px 10px; }
-    .filter-select { font-size: 12px; padding: 5px 8px; }
-    .filter-label { font-size: 10px; }
+    .canales-filter { gap: 5px; }
+    .canal-chip { font-size: 10px; padding: 3px 8px; }
+    .filter-select { font-size: 11px; padding: 4px 6px; }
+    .filter-label { font-size: 9px; }
 
-    .summary-row { grid-template-columns: repeat(2, 1fr); }
-    .summary-card { padding: 10px 12px; }
-    .sc-val { font-size: 22px; }
-    .sc-label { font-size: 8px; }
-    .sc-cmp-val { font-size: 15px; }
-    .value-cmp { font-size: 18px; }
-    .value-cmp .cmp-label { font-size: 8px; }
-    .value-cmp .cmp-delta { font-size: 10px; }
+    /* ── Summary cards: 4 + 3 layout ── */
+    .summary-row { grid-template-columns: repeat(4, 1fr); }
+    .summary-card { padding: 7px 5px; }
+    .sc-label {
+      font-size: 6.5px;
+      letter-spacing: 0.8px;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+    .sc-val { font-size: 14px; letter-spacing: -0.3px; }
+    .sc-sub { font-size: 7.5px; margin-top: 2px; }
+    .sc-divider { margin: 6px 0 5px; }
+    .sc-cmp-val { font-size: 11px; }
+    .sc-cmp-sub { font-size: 7px; }
+    .sc-delta { min-height: 12px; }
+    .sc-mensaje { font-size: 8px; margin-top: 3px; }
+    .delta-pos, .delta-neg, .delta-neu { font-size: 9px; }
+    .summary-period-bar { padding: 5px 10px; gap: 8px; }
+    .period-tag { font-size: 8px; padding: 2px 7px; }
 
-    #criteriosBar { padding: 8px 12px; gap: 8px; font-size: 9px; }
+    /* Semáforo bar: compacto en móvil */
+    #criteriosBar {
+      padding: 5px 10px;
+      gap: 6px;
+      font-size: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+    }
 
     .metas-grid { grid-template-columns: 1fr; }
-    .main-content { padding: 10px 12px; }
+    .main-content { padding: 8px 10px; }
+    .section-title { font-size: 12px; margin-bottom: 10px; }
+    .legend { gap: 12px; margin-bottom: 12px; }
+    .legend-item { font-size: 10px; }
 
-    /* Tabla: scroll horizontal con nombre fijo */
-    .ranking-scroll-wrap { margin: 0 -12px; border-left: none; border-right: none; border-radius: 0; }
-    .ranking-table { min-width: 560px; }
-    .ranking-table th, .ranking-table td { padding: 9px 8px; font-size: 12px; }
-    .ranking-table th.col-sticky-2, .ranking-table td.col-sticky-2 { min-width: 120px; }
-    .bar-track { width: 36px; }
-    .asesor-name { font-size: 12px; }
-    .asesor-tienda { font-size: 10px; }
-    .semaforo { font-size: 11px; padding: 3px 7px; }
-    .tickets-badge { font-size: 10px; }
-    .section-title { font-size: 13px; }
+    /* ── Ranking: scroll horizontal, TODAS las columnas visibles ── */
+    .ranking-scroll-wrap {
+      margin: 0 -10px;
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+    }
+    /* Ancho mínimo garantiza que todas las cols aparezcan en scroll */
+    .ranking-table { min-width: 600px; }
+    .ranking-table th { padding: 7px 5px; font-size: 9px; letter-spacing: 0.5px; }
+    .ranking-table td { padding: 8px 5px; font-size: 10px; }
+    .ranking-table th.col-sticky-2,
+    .ranking-table td.col-sticky-2 { min-width: 100px; max-width: 110px; }
+    /* Columna # */
+    .ranking-table th.col-sticky,
+    .ranking-table td.col-sticky { padding-left: 8px; padding-right: 4px; }
+    .bar-track { width: 28px; }
+    .bar-wrap { gap: 4px; }
+    .asesor-name { font-size: 10px; }
+    .asesor-tienda { font-size: 8.5px; margin-top: 1px; }
+    .semaforo { font-size: 9.5px; padding: 2px 5px; gap: 4px; }
+    .dot { width: 5px; height: 5px; }
+    .tickets-badge { font-size: 9.5px; padding: 1px 5px; }
+    .metric-value { font-size: 10px; }
   }
 
-  @media (max-width: 768px) {
-    .col-avt, .col-estado { display: none; }
-  }
   @media (max-width: 420px) {
-    .col-tickets { display: none; }
-    .sc-val { font-size: 20px; }
-    .date-input { width: 115px; font-size: 10px; }
+    /* En pantallas muy pequeñas ajustar col-asesor aún más */
+    .ranking-table th.col-sticky-2,
+    .ranking-table td.col-sticky-2 { min-width: 88px; max-width: 95px; }
+    .asesor-name { font-size: 9.5px; }
+    .summary-row { grid-template-columns: repeat(4, 1fr); }
+    .sc-val { font-size: 13px; }
+    .date-input { width: 110px; font-size: 10px; }
   }
 
   /* ═══════════════════════════════════
