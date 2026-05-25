@@ -713,39 +713,112 @@
   .cmp-delta.neg { color: var(--red); background: var(--red-bg); }
 
   /* ── MOBILE FIRST ── */
+  /* PDF DOWNLOAD BUTTON */
+  .pdf-btn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    font-family: 'Calibri Light', Calibri, Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .pdf-btn:hover { background: #111; color: #fff; border-color: #111; }
+  .pdf-btn svg { flex-shrink: 0; }
+
+  /* STICKY TABLE WRAPPER — para scroll horizontal en móvil */
+  .ranking-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .ranking-table {
+    min-width: 620px; /* fuerza scroll antes de colapsar */
+  }
+  /* Columnas pegajosas: # y Asesor */
+  .ranking-table th.col-sticky,
+  .ranking-table td.col-sticky {
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 2;
+    box-shadow: 2px 0 6px -2px rgba(0,0,0,0.08);
+  }
+  .ranking-table th.col-sticky-2,
+  .ranking-table td.col-sticky-2 {
+    position: sticky;
+    left: 40px; /* ancho de la col # */
+    background: var(--surface);
+    z-index: 2;
+    box-shadow: 2px 0 6px -2px rgba(0,0,0,0.08);
+    min-width: 140px;
+  }
+  .ranking-table tbody tr:hover td.col-sticky,
+  .ranking-table tbody tr:hover td.col-sticky-2 {
+    background: var(--surface2);
+  }
+
   @media (max-width: 768px) {
     .cal-popup { width: calc(100vw - 32px); left: 16px !important; }
-    .cal-trigger { min-width: 150px; font-size: 11px; }
-    header { padding: 12px 16px; gap: 10px; }
-    .logo { font-size: 22px; }
-    .logo span { font-size: 10px; }
-    .upload-btn { padding: 8px 14px; font-size: 12px; }
-    .last-update { font-size: 10px; }
+    .cal-trigger { min-width: 120px; font-size: 10px; padding: 5px 10px; }
 
-    .filters { padding: 10px 16px; gap: 8px; flex-direction: column; align-items: flex-start; }
+    /* Header compacto */
+    header { padding: 8px 12px; gap: 8px; flex-wrap: nowrap; }
+    .logo { font-size: 18px; letter-spacing: 4px; }
+    .logo span { font-size: 9px; letter-spacing: 2px; }
+    .header-right { gap: 6px; }
+    .upload-admin-btn { padding: 6px 10px; font-size: 11px; letter-spacing: 0.5px; gap: 4px; }
+    .upload-admin-btn svg { display: none; } /* ocultar icono en móvil para ahorrar espacio */
+    .logout-btn { padding: 6px 10px; font-size: 11px; gap: 4px; }
+    .logout-btn svg { display: none; }
+    .last-update { font-size: 9px; line-height: 1.3; }
+    .pdf-btn { padding: 6px 10px; font-size: 11px; gap: 4px; }
+    .pdf-btn svg { display: none; }
+
+    .filters { padding: 8px 12px; gap: 6px; flex-direction: column; align-items: flex-start; }
+    .filters-row1 { padding: 8px 12px; }
+    .filters-row2 { padding: 10px 12px; gap: 12px; }
     .date-range-wrap { gap: 6px; flex-wrap: wrap; }
     .date-input { font-size: 11px; padding: 5px 8px; width: 130px; }
     .filter-sep { width: 100%; height: 1px; }
     .canales-filter { gap: 6px; }
     .canal-chip { font-size: 11px; padding: 4px 10px; }
+    .filter-select { font-size: 12px; padding: 5px 8px; }
+    .filter-label { font-size: 10px; }
 
     .summary-row { grid-template-columns: repeat(2, 1fr); }
-    .summary-card { padding: 12px 14px; }
-    .summary-card .value { font-size: 28px; }
-    .summary-card .label { font-size: 9px; }
+    .summary-card { padding: 10px 12px; }
+    .sc-val { font-size: 22px; }
+    .sc-label { font-size: 8px; }
+    .sc-cmp-val { font-size: 15px; }
     .value-cmp { font-size: 18px; }
     .value-cmp .cmp-label { font-size: 8px; }
     .value-cmp .cmp-delta { font-size: 10px; }
 
-    .metas-grid { grid-template-columns: 1fr; }
-    .main-content { padding: 12px 16px; }
+    #criteriosBar { padding: 8px 12px; gap: 8px; font-size: 9px; }
 
-    .ranking-table th, .ranking-table td { padding: 10px 6px; font-size: 12px; }
-    .bar-track { width: 40px; }
-    .asesor-name { font-size: 13px; }
+    .metas-grid { grid-template-columns: 1fr; }
+    .main-content { padding: 10px 12px; }
+
+    /* Tabla: scroll horizontal con nombre fijo */
+    .ranking-scroll-wrap { margin: 0 -12px; border-left: none; border-right: none; border-radius: 0; }
+    .ranking-table { min-width: 560px; }
+    .ranking-table th, .ranking-table td { padding: 9px 8px; font-size: 12px; }
+    .ranking-table th.col-sticky-2, .ranking-table td.col-sticky-2 { min-width: 120px; }
+    .bar-track { width: 36px; }
+    .asesor-name { font-size: 12px; }
     .asesor-tienda { font-size: 10px; }
     .semaforo { font-size: 11px; padding: 3px 7px; }
     .tickets-badge { font-size: 10px; }
+    .section-title { font-size: 13px; }
   }
 
   @media (max-width: 768px) {
@@ -753,8 +826,63 @@
   }
   @media (max-width: 420px) {
     .col-tickets { display: none; }
-    .summary-card .value { font-size: 24px; }
+    .sc-val { font-size: 20px; }
     .date-input { width: 115px; font-size: 10px; }
+  }
+
+  /* ═══════════════════════════════════
+     PRINT / PDF STYLES
+  ═══════════════════════════════════ */
+  @media print {
+    /* Ocultar elementos de UI */
+    header .upload-admin-btn,
+    header .logout-btn,
+    header .pdf-btn,
+    #loginScreen,
+    #popupOverlay,
+    #uploadModal,
+    .filters-wrap,
+    #criteriosBar,
+    .legend,
+    .section-title::after { display: none !important; }
+
+    /* Header compacto para impresión */
+    header {
+      position: static;
+      padding: 12px 20px;
+      border-bottom: 2px solid #111;
+    }
+    .last-update { display: block; }
+
+    /* Quitar sombras y fondos para ahorro de tinta */
+    * { box-shadow: none !important; }
+
+    /* Summary en 4 columnas */
+    .summary-row { grid-template-columns: repeat(4, 1fr) !important; }
+    .summary-card { padding: 10px 12px; }
+    .sc-val { font-size: 20px; }
+
+    /* Tabla sin scroll, ancho completo */
+    .ranking-scroll-wrap { overflow: visible; border: none; }
+    .ranking-table { min-width: unset; width: 100%; }
+    .ranking-table th.col-sticky,
+    .ranking-table td.col-sticky,
+    .ranking-table th.col-sticky-2,
+    .ranking-table td.col-sticky-2 {
+      position: static;
+      box-shadow: none;
+    }
+    /* Mostrar todas las columnas ocultas en móvil */
+    .col-avt, .col-estado, .col-tickets { display: table-cell !important; }
+
+    .main-content { padding: 16px 20px; }
+
+    /* Evitar corte de filas entre páginas */
+    .ranking-table tbody tr { page-break-inside: avoid; }
+
+    /* Nombre visible del asesor */
+    .asesor-name { font-size: 12px; }
+    .asesor-tienda { font-size: 10px; }
   }
 
   .sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.5; }
@@ -1203,6 +1331,10 @@
   </div>
   <div class="header-right">
     <div class="last-update" id="lastUpdate"></div>
+    <button class="pdf-btn" id="pdfBtn" onclick="descargarPDF()" title="Descargar PDF">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      PDF
+    </button>
     <button class="upload-admin-btn" id="uploadAdminBtn" onclick="abrirUpload()">
       ↑ Cargar CSV
     </button>
@@ -1446,11 +1578,12 @@
       <div class="legend-item"><div class="dot" style="background:var(--red);border-radius:50%"></div> Por debajo de meta</div>
     </div>
 
+    <div class="ranking-scroll-wrap">
     <table class="ranking-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th onclick="sortBy('nombre')">Asesor <span class="sort-icon">↕</span></th>
+          <th class="col-sticky">#</th>
+          <th class="col-sticky-2" onclick="sortBy('nombre')">Asesor <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('ventas')" class="sorted">Ventas <span class="sort-icon">↓</span></th>
           <th class="col-tickets" onclick="sortBy('tickets')">Tickets <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('upt')">UPT <span class="sort-icon">↕</span></th>
@@ -1462,6 +1595,7 @@
       </thead>
       <tbody id="tablaBody"></tbody>
     </table>
+    </div>
   </div>
 </div>
 
@@ -1943,10 +2077,33 @@ function cerrarSesion() {
   rawData = [];
   document.getElementById('dashboard').style.display    = 'none';
   document.getElementById('uploadAdminBtn').style.display = 'none';
+  document.getElementById('pdfBtn').style.display = 'none';
   document.getElementById('loginEmail').value    = '';
   document.getElementById('loginPassword').value = '';
   document.getElementById('loginError').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════
+// DESCARGA PDF — usa el diálogo de impresión del navegador
+// ═══════════════════════════════════════════
+function descargarPDF() {
+  // Título temporal del documento para el nombre de archivo sugerido
+  const tituloOriginal = document.title;
+  const periodoEl = document.getElementById('labelPeriodoActual');
+  const periodo   = periodoEl ? periodoEl.textContent.trim() : '';
+  const canal     = document.getElementById('canalSelect')
+                    ? document.getElementById('canalSelect').value : '';
+  const hoy = new Date().toLocaleDateString('es-CO');
+
+  document.title = `THM Dashboard — ${periodo}${canal && canal !== 'todos' ? ' · ' + canal : ''} · ${hoy}`;
+
+  // Scroll al tope antes de imprimir
+  window.scrollTo(0, 0);
+  window.print();
+
+  // Restaurar título
+  setTimeout(() => { document.title = tituloOriginal; }, 1000);
 }
 
 function aplicarFechaRapida(tipo) {
@@ -2398,8 +2555,8 @@ function renderTabla() {
     const tr = document.createElement('tr');
     tr.className = rankClass;
     tr.innerHTML = `
-      <td class="rank-num">${rankLabel}</td>
-      <td>
+      <td class="rank-num col-sticky">${rankLabel}</td>
+      <td class="col-sticky-2">
         <div class="asesor-name">${capitalize(a.vendedor)}</div>
         <div class="asesor-tienda">${a.tiendas}</div>
       </td>
@@ -2541,6 +2698,10 @@ async function intentarLogin() {
 
       if (usuarioActual.rol === 'administrador') {
         document.getElementById('uploadAdminBtn').style.display = 'flex';
+      }
+      // Botón PDF visible para administrador y directivo
+      if (usuarioActual.rol === 'administrador' || usuarioActual.rol === 'directivo') {
+        document.getElementById('pdfBtn').style.display = 'flex';
       }
       const criteriosBar = document.getElementById('criteriosBar');
       if (criteriosBar) {
