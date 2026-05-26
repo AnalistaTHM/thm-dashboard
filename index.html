@@ -2352,12 +2352,10 @@ function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
       .map(([k]) => k)
   );
 
-  // Paso 2: agregar por asesor
-  // - ventasTotales: TODAS las filas (sin transformacion)
-  // - ventasNetas y unidadesNetas: TODAS las filas sin bolsas/cajas (incluyendo PNC negativos)
-  // - tickets: solo docs con valor acumulado > 0
+  // Paso 2: agregar por asesor — THERMOS se excluye del mapa (no aparece en ranking/UPT/AVT)
   const mapa = {};
   datos.forEach(r => {
+    if (r.esVendedorInterno) return; // THERMOS: no es asesor, no entra al ranking
     const keyAsesor = r.vendedorId || r.vendedor;
     const keyDoc = keyAsesor + '|' + r.nroDoc;
 
@@ -2451,6 +2449,7 @@ function agregarPorAsesorYTienda(datos, rangoDesde, rangoHasta) {
 
   const mapa = {};
   datos.forEach(r => {
+    if (r.esVendedorInterno) return; // THERMOS: no aparece en ranking de líderes
     const vid = r.vendedorId || r.vendedor;
     const key = vid + '|' + r.tienda;
     const keyDoc = vid + '|' + r.tienda + '|' + r.nroDoc;
@@ -2509,6 +2508,7 @@ function calcularPptoPorAsesorTienda(datos, rangoDesde, rangoHasta) {
   const activosPorTiendaFecha = {};
   datos.forEach(r => {
     if (!r.fecha) return;
+    if (r.esVendedorInterno) return; // THERMOS no divide el presupuesto
     const fd = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate());
     if (rangoDesde && fd < rangoDesde) return;
     if (rangoHasta && fd > rangoHasta) return;
@@ -2544,10 +2544,11 @@ function calcularPptoPorAsesor(datos, rangoDesde, rangoHasta) {
   // Un asesor es "activo" en una tienda un día si tiene al menos 1 venta ese día en esa tienda
   if (!presupuestoData.length) return {};
 
-  // Construir mapa: tienda+fecha → Set de vendedorIds activos
+  // Construir mapa: tienda+fecha → Set de vendedorIds activos (excluye THERMOS)
   const activosPorTiendaFecha = {};
   datos.forEach(r => {
     if (!r.fecha) return;
+    if (r.esVendedorInterno) return; // THERMOS no cuenta como asesor activo para presupuesto
     const fd = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate());
     if (rangoDesde && fd < rangoDesde) return;
     if (rangoHasta && fd > rangoHasta) return;
@@ -2660,7 +2661,9 @@ function renderTabla() {
   asesores.sort((a, b) => sortAsc ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]);
 
   // Summary cards — período principal
-  const totalVentas        = asesSummary.reduce((s, a) => s + a.ventasTotales, 0);
+  // Ventas Totales: suma directa de todos los registros (incluye THERMOS — suma/descuenta a la tienda)
+  const totalVentas        = datos.reduce((s, r) => s + r.valorNeto, 0);
+  // UPT, AVT, Tickets, Margen: solo asesores reales (THERMOS excluido del mapa de agregarPorAsesor)
   const totalTickets       = asesSummary.reduce((s, a) => s + a.tickets, 0);
   const totalUnidadesNetas = asesSummary.reduce((s, a) => s + a.unidadesNetas, 0);
   const totalVentasNetas   = asesSummary.reduce((s, a) => s + a.ventasNetas, 0);
@@ -2757,7 +2760,8 @@ function renderTabla() {
 
     const datosCmp    = filtrarDatos(rangoCmp);
     const asesoresCmp = agregarPorAsesor(datosCmp, rangoCmp.desde, rangoCmp.hasta);
-    const cmpVentas   = asesoresCmp.reduce((s, a) => s + a.ventasTotales, 0);
+    // cmpVentas: suma directa incluyendo THERMOS (mismo criterio que período principal)
+    const cmpVentas   = datosCmp.reduce((s, r) => s + r.valorNeto, 0);
     const cmpTickets  = asesoresCmp.reduce((s, a) => s + a.tickets, 0);
     const cmpUnidades = asesoresCmp.reduce((s, a) => s + a.unidadesNetas, 0);
     const cmpVentasN  = asesoresCmp.reduce((s, a) => s + a.ventasNetas, 0);
@@ -3094,19 +3098,21 @@ function procesarDesdeSupabase(rows) {
       ? new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]))
       : null;
     if (!fechaLocal) continue;
-    // Excluir vendedores internos
+    // Excluir vendedores internos: no aparecen en ranking ni en UPT/AVT/presupuesto
+    // PERO sus ventas SÍ suman al total de la tienda (se marcan con esVendedorInterno)
     const vendNorm = (r.vendedor || '').trim().toUpperCase();
-    if (EXCLUIR_VENDEDORES.some(e => vendNorm.includes(e.toUpperCase()))) continue;
+    const esInterno = EXCLUIR_VENDEDORES.some(e => vendNorm.includes(e.toUpperCase()));
     result.push({
-      tienda:     normalizarCanal(r.tienda      || ''),
-      fecha:      fechaLocal,
-      nroDoc:     r.nro_doc     || '',
-      vendedorId: r.vendedor_id || '',
-      vendedor:   r.vendedor    || '',
-      descItem:   (r.desc_item  || '').toUpperCase(),
-      cantidad:   Number(r.cantidad)   || 0,
-      costoMP:    Number(r.costo_mp)   || 0,
-      valorNeto:  Number(r.valor_neto) || 0
+      tienda:            normalizarCanal(r.tienda      || ''),
+      fecha:             fechaLocal,
+      nroDoc:            r.nro_doc     || '',
+      vendedorId:        r.vendedor_id || '',
+      vendedor:          r.vendedor    || '',
+      descItem:          (r.desc_item  || '').toUpperCase(),
+      cantidad:          Number(r.cantidad)   || 0,
+      costoMP:           Number(r.costo_mp)   || 0,
+      valorNeto:         Number(r.valor_neto) || 0,
+      esVendedorInterno: esInterno,
     });
   }
   console.log('THM procesarDesdeSupabase — filas entrada:', rows.length,
