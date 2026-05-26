@@ -952,6 +952,36 @@
   .cell-ppto-vacio { font-size: 12px; color: var(--text3); }
   .cell-cumpl      { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; }
 
+  /* Fila de "mi tienda" en el ranking de líderes */
+  .ranking-table tbody tr.mi-tienda-row td { background: rgba(0,120,212,0.06); }
+  .ranking-table tbody tr.mi-tienda-row td.col-sticky,
+  .ranking-table tbody tr.mi-tienda-row td.col-sticky-2 { background: rgba(0,120,212,0.06); }
+  .ranking-table tbody tr.mi-tienda-row:hover td { background: rgba(0,120,212,0.10); }
+  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky,
+  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky-2 { background: rgba(0,120,212,0.10); }
+  .mi-tienda-tag { font-size: 9px; color: var(--accent); font-weight: 500; letter-spacing: 0.3px; }
+
+  /* Criterios de semáforo inline (debajo del título del ranking) */
+  .criterios-inline {
+    display: none; /* Se muestra vía JS según rol */
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .criterios-inline .cri-label { font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+  .criterios-inline .cri-item { display: flex; align-items: center; gap: 5px; }
+  @media (max-width: 768px) {
+    .criterios-inline { font-size: 8.5px; padding: 6px 8px; gap: 8px; }
+  }
+
   /* LOADING */
   #loadingState {
     text-align: center;
@@ -1635,6 +1665,14 @@
   <div class="main-content">
     <div class="section-title">RANKING ASESORES</div>
 
+    <!-- Criterios de semáforo inline — visible para todos, tipo filtrado por rol -->
+    <div class="criterios-inline" id="criteriosInline">
+      <span class="cri-label" id="criTipoLabel">SEMÁFORO</span>
+      <span class="cri-item" id="criVerdeRow"><span>🟢</span><span id="criVerdeText"></span></span>
+      <span class="cri-item" id="criAmarilloRow"><span>🟡</span><span id="criAmarilloText"></span></span>
+      <span class="cri-item" id="criRojoRow"><span>🔴</span><span id="criRojoText"></span></span>
+    </div>
+
     <div class="legend">
       <div class="legend-item"><div class="dot" style="background:var(--green);border-radius:50%"></div> Por encima de meta</div>
       <div class="legend-item"><div class="dot" style="background:var(--yellow);border-radius:50%"></div> Cerca de meta (≥80%)</div>
@@ -1680,6 +1718,8 @@ const SUPABASE_HEADERS = {
 // DATOS Y ESTADO
 // ═══════════════════════════════════════════
 let rawData         = [];
+let rawDataAll      = [];   // Todos los registros sin filtrar por tienda (para ranking tipo lider)
+let tipoLider       = '';   // 'A' o 'B' — tipo de la tienda del lider logueado
 let presupuestoData = [];
 let canalSeleccionado = 'todos';
 let todosCanales = [];
@@ -2334,6 +2374,126 @@ function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
   });
 }
 
+// ═══════════════════════════════════════════
+// FUNCIONES PARA RANKING POR TIPO (LÍDERES)
+// ═══════════════════════════════════════════
+
+// Filtra rawDataAll al rango de fechas + tipo de tienda del líder
+function filtrarDatosTipo(rango) {
+  if (!rango || !rango.desde || !rango.hasta) return rawDataAll;
+  const desdeMs = rango.desde.getTime();
+  const hastaMs = rango.hasta.getTime();
+  return rawDataAll.filter(r => {
+    if (!r.fecha) return false;
+    const fechaMs = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate()).getTime();
+    if (fechaMs < desdeMs || fechaMs > hastaMs) return false;
+    if (getTipoTienda(r.tienda) !== tipoLider) return false;
+    return true;
+  });
+}
+
+// Agrupa por (vendedorId + tienda) — cada combinación es una fila separada
+function agregarPorAsesorYTienda(datos, rangoDesde, rangoHasta) {
+  // tickets válidos: documentos con valor acumulado > 0, keyed por asesor|tienda|nroDoc
+  const valorPorDoc = {};
+  datos.forEach(r => {
+    const keyDoc = (r.vendedorId || r.vendedor) + '|' + r.tienda + '|' + r.nroDoc;
+    valorPorDoc[keyDoc] = (valorPorDoc[keyDoc] || 0) + r.valorNeto;
+  });
+  const ticketsValidos = new Set(
+    Object.entries(valorPorDoc).filter(([, v]) => v > 0).map(([k]) => k)
+  );
+
+  const mapa = {};
+  datos.forEach(r => {
+    const vid = r.vendedorId || r.vendedor;
+    const key = vid + '|' + r.tienda;
+    const keyDoc = vid + '|' + r.tienda + '|' + r.nroDoc;
+    if (!mapa[key]) {
+      mapa[key] = {
+        vendedor: r.vendedor,
+        vendedorId: r.vendedorId,
+        tienda: r.tienda,
+        tickets: new Set(),
+        ventasTotales: 0,
+        ventasNetas: 0,
+        unidadesNetas: 0,
+        costoMPTotal: 0,
+      };
+    }
+    const a = mapa[key];
+    a.ventasTotales += r.valorNeto;
+    if (ticketsValidos.has(keyDoc)) a.tickets.add(r.nroDoc);
+    if (!esExcluido(r.descItem)) {
+      a.ventasNetas    += r.valorNeto;
+      a.unidadesNetas  += r.cantidad;
+      a.costoMPTotal   += r.costoMP || 0;
+    }
+  });
+
+  const pptoPorKey = calcularPptoPorAsesorTienda(datos, rangoDesde, rangoHasta);
+
+  return Object.values(mapa).map(a => {
+    const tickets  = a.tickets.size || 1;
+    const key      = (a.vendedorId || a.vendedor) + '|' + a.tienda;
+    const pptoAsig = pptoPorKey[key] || 0;
+    return {
+      vendedor:       a.vendedor,
+      vendedorId:     a.vendedorId,
+      tiendas:        a.tienda,
+      tiendaPrincipal: a.tienda,
+      tickets:        a.tickets.size,
+      ventasTotales:  a.ventasTotales,
+      ventasNetas:    a.ventasNetas,
+      unidadesNetas:  a.unidadesNetas,
+      costoMPTotal:   a.costoMPTotal,
+      upt:            a.unidadesNetas / tickets,
+      avt:            a.ventasNetas   / tickets,
+      margenBruto:    a.ventasNetas > 0
+        ? ((a.ventasNetas / 1.19) - a.costoMPTotal) / (a.ventasNetas / 1.19)
+        : null,
+      pptoAsignado:   pptoAsig,
+      cumplPpto:      pptoAsig > 0 ? a.ventasTotales / pptoAsig : null,
+    };
+  });
+}
+
+// Presupuesto por (vendedorId|tienda): ppto_tienda_dia / asesores_activos_en_esa_tienda_ese_dia
+function calcularPptoPorAsesorTienda(datos, rangoDesde, rangoHasta) {
+  if (!presupuestoData.length) return {};
+  const activosPorTiendaFecha = {};
+  datos.forEach(r => {
+    if (!r.fecha) return;
+    const fd = new Date(r.fecha.getFullYear(), r.fecha.getMonth(), r.fecha.getDate());
+    if (rangoDesde && fd < rangoDesde) return;
+    if (rangoHasta && fd > rangoHasta) return;
+    const key = r.tienda + '|' + fd.getTime();
+    if (!activosPorTiendaFecha[key]) {
+      activosPorTiendaFecha[key] = { tienda: r.tienda, fecha: fd, asesores: new Set() };
+    }
+    // La clave del asesor incluye la tienda para que el ppto se asigne por tienda
+    activosPorTiendaFecha[key].asesores.add((r.vendedorId || r.vendedor) + '|' + r.tienda);
+  });
+
+  const pptoPorKey = {};
+  Object.values(activosPorTiendaFecha).forEach(({ tienda, fecha, asesores }) => {
+    const fd = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    let pptoTiendaDia = 0;
+    presupuestoData.forEach(p => {
+      const pd = new Date(p.fecha.getFullYear(), p.fecha.getMonth(), p.fecha.getDate());
+      if (pd.getTime() !== fd.getTime()) return;
+      if (normalizarCanal(p.tienda) !== tienda) return;
+      pptoTiendaDia += p.ppto;
+    });
+    if (pptoTiendaDia === 0 || asesores.size === 0) return;
+    const pptoXAsesor = pptoTiendaDia / asesores.size;
+    asesores.forEach(key => {
+      pptoPorKey[key] = (pptoPorKey[key] || 0) + pptoXAsesor;
+    });
+  });
+  return pptoPorKey;
+}
+
 function calcularPptoPorAsesor(datos, rangoDesde, rangoHasta) {
   // Para cada (tienda, fecha) en el período, divide el presupuesto entre los asesores activos
   // Un asesor es "activo" en una tienda un día si tiene al menos 1 venta ese día en esa tienda
@@ -2432,7 +2592,16 @@ function formatPesoFull(n) {
 function renderTabla() {
   const datos   = filtrarDatos();
   const rFiltro = getFechaFiltro();
-  const asesores = agregarPorAsesor(datos, rFiltro.desde, rFiltro.hasta);
+
+  // Para líderes: ranking usa TODOS los datos de su tipo de tienda (asesor × tienda)
+  // Para admin/directivo: ranking estándar por asesor (sumando todas sus tiendas)
+  let asesores;
+  if (usuarioActual.rol === 'lider' && tipoLider) {
+    const datosTipo = filtrarDatosTipo(rFiltro);
+    asesores = agregarPorAsesorYTienda(datosTipo, rFiltro.desde, rFiltro.hasta);
+  } else {
+    asesores = agregarPorAsesor(datos, rFiltro.desde, rFiltro.hasta);
+  }
 
   // Ordenar
   const field = document.getElementById('sortSelect').value;
@@ -2616,13 +2785,17 @@ function renderTabla() {
     const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
     const rankLabel = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
 
+    // Resaltar fila si es la tienda propia del líder
+    const esMiTienda = usuarioActual.rol === 'lider'
+      && a.tiendaPrincipal === normalizarCanal(usuarioActual.tienda);
+
     const tr = document.createElement('tr');
-    tr.className = rankClass;
+    tr.className = (rankClass + (esMiTienda ? ' mi-tienda-row' : '')).trim();
     tr.innerHTML = `
       <td class="rank-num col-sticky">${rankLabel}</td>
       <td class="col-sticky-2">
         <div class="asesor-name">${capitalize(a.vendedor)}</div>
-        <div class="asesor-tienda">${a.tiendas}</div>
+        <div class="asesor-tienda">${a.tiendas}${esMiTienda ? ' <span class="mi-tienda-tag">· tu tienda</span>' : ''}</div>
       </td>
       <td>
         <div class="bar-wrap">
@@ -2885,15 +3058,18 @@ async function cargarDesdeSupabase() {
     }
 
     console.log('THM filas descargadas:', allRows.length, '| procesando...');
-    rawData = procesarDesdeSupabase(allRows);
-    console.log('THM rawData procesado:', rawData.length);
+    rawDataAll = procesarDesdeSupabase(allRows);
+    rawData    = rawDataAll; // por defecto: admin/directivo usan todo
 
-    // Si el usuario es Lider, filtrar solo su tienda
+    // Si el usuario es Lider, filtrar rawData a su tienda (para summary cards y cumplimiento)
+    // rawDataAll se mantiene completo para el ranking por tipo
     if (usuarioActual.rol === 'lider' && usuarioActual.tienda) {
       const tiendaLider = normalizarCanal(usuarioActual.tienda);
-      rawData = rawData.filter(r => r.tienda === tiendaLider);
-      console.log('THM Lider — tienda:', tiendaLider, '| filas filtradas:', rawData.length);
+      tipoLider = getTipoTienda(tiendaLider);
+      rawData   = rawDataAll.filter(r => r.tienda === tiendaLider);
+      console.log('THM Lider — tienda:', tiendaLider, '| tipo:', tipoLider, '| filas filtradas:', rawData.length);
     }
+    console.log('THM rawData procesado:', rawData.length);
 
     // Calcular rango de años para el calendario (una sola vez)
     for (const r of rawData) {
@@ -2943,6 +3119,31 @@ async function cargarDesdeSupabase() {
       `Actualizado: ${now.toLocaleDateString('es-CO')} ${now.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}`;
 
     renderTabla();
+
+    // Configurar visibilidad del criteriosBar y criteriosInline según rol
+    const _cb = document.getElementById('criteriosBar');
+    const _ci = document.getElementById('criteriosInline');
+    if (usuarioActual.rol === 'lider') {
+      if (_cb) _cb.style.display = 'none';
+      if (_ci) {
+        const tipo = tipoLider || 'A';
+        const c = CRITERIOS[tipo];
+        document.getElementById('criTipoLabel').textContent =
+          'SEMÁFORO TIPO ' + tipo + ' · ' +
+          (tipo === 'A' ? 'Andino · Gran Estación · Tesoro · Unicentro'
+                        : 'Santa Fe · Titán · Hacienda');
+        document.getElementById('criVerdeText').textContent =
+          'UPT≥' + c.upt.verde.toFixed(1) + ' · AVT≥$' + (c.avt.verde / 1000).toFixed(0) + 'K';
+        document.getElementById('criAmarilloText').textContent =
+          'UPT≥' + c.upt.amarillo.toFixed(1) + ' · AVT≥$' + (c.avt.amarillo / 1000).toFixed(0) + 'K';
+        document.getElementById('criRojoText').textContent =
+          'UPT<' + c.upt.amarillo.toFixed(1) + ' · AVT<$' + (c.avt.amarillo / 1000).toFixed(0) + 'K';
+        _ci.style.display = 'flex';
+      }
+    } else {
+      if (_cb) _cb.style.display = '';
+      if (_ci) _ci.style.display = 'none';
+    }
 
     // Popup con fecha más reciente de los datos
     if (maxFechaData) {
