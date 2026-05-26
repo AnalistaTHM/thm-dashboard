@@ -796,28 +796,54 @@
     #criteriosBar div { font-size: 7px !important; gap: 6px !important; }
     #criteriosBar > span { font-size: 7px !important; letter-spacing: 0.5px !important; }
 
-    /* ── Filtros: UNA sola fila con scroll horizontal ── */
-    .filters-wrap { overflow-x: auto; }
+    /* ── Filtros: UNA sola fila compacta con scroll horizontal ── */
+    .filters-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .filters-row1 {
       display: flex !important;
       flex-direction: row !important;
       align-items: center !important;
       flex-wrap: nowrap !important;
       overflow-x: auto !important;
-      padding: 6px 10px !important;
-      gap: 6px !important;
+      padding: 4px 8px !important;
+      gap: 4px !important;
       white-space: nowrap;
       -webkit-overflow-scrolling: touch;
+      border-bottom: 1px solid var(--border);
     }
-    .filter-label { font-size: 8px; white-space: nowrap; flex-shrink: 0; }
-    .filter-select { font-size: 10px; padding: 4px 5px; flex-shrink: 0; }
-    /* Separador vuelve a ser vertical */
-    .filter-sep { width: 1px !important; height: 14px !important; flex-shrink: 0; }
-    .canales-filter { gap: 5px; }
-    .canal-chip { font-size: 10px; padding: 3px 8px; }
-    .date-range-wrap { gap: 5px; flex-wrap: wrap; }
-    .date-input { font-size: 10px; padding: 4px 7px; width: 120px; }
-    .filters-row2 { padding: 8px 10px; gap: 10px; }
+    /* Label: casi invisible, solo guía */
+    .filter-label {
+      font-size: 7px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: 0.5px;
+      color: var(--text3);
+    }
+    /* Select muy compacto */
+    select.filter-select {
+      font-size: 9px !important;
+      padding: 3px 4px !important;
+      flex-shrink: 0;
+      height: 24px;
+      border-radius: 2px;
+      max-width: 110px;
+    }
+    /* Separador: línea fina corta */
+    .filter-sep {
+      width: 1px !important;
+      height: 12px !important;
+      flex-shrink: 0;
+      background: var(--border);
+    }
+    .canales-filter { gap: 4px; }
+    .canal-chip { font-size: 9px; padding: 2px 6px; }
+    /* Fecha personalizada (row2) también compacta */
+    .filters-row2 { padding: 6px 8px; gap: 8px; }
+    .date-block-label { font-size: 8px; }
+    .date-input { font-size: 9px; padding: 3px 5px; width: 108px; }
+    .date-input-label { font-size: 7px; }
+    .date-range-wrap { gap: 4px; }
+    .date-block-sep { font-size: 11px; margin-top: 14px; }
+    .date-range-sep { font-size: 9px; margin-top: 12px; }
 
     /* ── Summary cards: 4 + 3 ── */
     .summary-row { grid-template-columns: repeat(4, 1fr); }
@@ -978,6 +1004,7 @@
   }
   .criterios-inline .cri-label { font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
   .criterios-inline .cri-item { display: flex; align-items: center; gap: 5px; }
+  .criterios-inline .cri-tipo-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   @media (max-width: 768px) {
     .criterios-inline { font-size: 8.5px; padding: 6px 8px; gap: 8px; }
   }
@@ -1421,6 +1448,7 @@
   <div class="logo">
     THM
     <span>DASHBOARD · ASESORES</span>
+    <span id="tituloTienda" style="display:none; font-size:9px; letter-spacing:3px; color:var(--accent); font-weight:700; margin-top:1px;"></span>
   </div>
   <div class="header-right">
     <div class="last-update" id="lastUpdate"></div>
@@ -1532,10 +1560,12 @@
         <option value="custom">Personalizado...</option>
       </select>
       <div class="filter-sep"></div>
-      <span class="filter-label">Canal</span>
-      <select class="filter-select" id="canalSelect" onchange="onCanalSelect()">
-        <option value="todos">Todos los canales</option>
-      </select>
+      <div id="canalFilterGroup" style="display:flex;align-items:center;gap:4px;">
+        <span class="filter-label" id="canalFilterLabel">Canal</span>
+        <select class="filter-select" id="canalSelect" onchange="onCanalSelect()">
+          <option value="todos">Todos los canales</option>
+        </select>
+      </div>
       <div class="filter-sep"></div>
       <span class="filter-label">Ordenar por</span>
       <select class="filter-select" id="sortSelect" onchange="renderTabla()">
@@ -1665,12 +1695,24 @@
   <div class="main-content">
     <div class="section-title">RANKING ASESORES</div>
 
-    <!-- Criterios de semáforo inline — visible para todos, tipo filtrado por rol -->
+    <!-- Criterios de semáforo inline — debajo del título. Admin/directivo: ambos tipos. Lider: solo el suyo. -->
     <div class="criterios-inline" id="criteriosInline">
-      <span class="cri-label" id="criTipoLabel">SEMÁFORO</span>
-      <span class="cri-item" id="criVerdeRow"><span>🟢</span><span id="criVerdeText"></span></span>
-      <span class="cri-item" id="criAmarilloRow"><span>🟡</span><span id="criAmarilloText"></span></span>
-      <span class="cri-item" id="criRojoRow"><span>🔴</span><span id="criRojoText"></span></span>
+      <!-- Tipo A (visible para admin/directivo/lider tipo A) -->
+      <span class="cri-tipo-group" id="criGrupoA">
+        <span class="cri-label">SEMÁFORO A</span>
+        <span class="cri-item"><span>🟢</span> UPT≥2,8 · AVT≥$380K</span>
+        <span class="cri-item"><span>🟡</span> UPT≥2,5 · AVT≥$350K</span>
+        <span class="cri-item"><span>🔴</span> UPT&lt;2,5 · AVT&lt;$350K</span>
+      </span>
+      <!-- Separador entre tipos (solo admin/directivo) -->
+      <span id="criSepAB" style="display:none; width:1px; background:var(--border); height:14px; align-self:center;"></span>
+      <!-- Tipo B (visible para admin/directivo/lider tipo B) -->
+      <span class="cri-tipo-group" id="criGrupoB">
+        <span class="cri-label">SEMÁFORO B</span>
+        <span class="cri-item"><span>🟢</span> UPT≥2,5 · AVT≥$350K</span>
+        <span class="cri-item"><span>🟡</span> UPT≥2,3 · AVT≥$320K</span>
+        <span class="cri-item"><span>🔴</span> UPT&lt;2,3 · AVT&lt;$320K</span>
+      </span>
     </div>
 
     <div class="legend">
@@ -2593,8 +2635,8 @@ function renderTabla() {
   const datos   = filtrarDatos();
   const rFiltro = getFechaFiltro();
 
-  // Para líderes: ranking usa TODOS los datos de su tipo de tienda (asesor × tienda)
-  // Para admin/directivo: ranking estándar por asesor (sumando todas sus tiendas)
+  // Para líderes: el ranking usa TODOS los datos de su tipo de tienda (asesor × tienda)
+  // El summary usa SOLO los datos de su tienda (rawData ya filtrado)
   let asesores;
   if (usuarioActual.rol === 'lider' && tipoLider) {
     const datosTipo = filtrarDatosTipo(rFiltro);
@@ -2603,6 +2645,11 @@ function renderTabla() {
     asesores = agregarPorAsesor(datos, rFiltro.desde, rFiltro.hasta);
   }
 
+  // Para las tarjetas de summary: usar siempre los datos de la tienda propia (datos = filtrarDatos())
+  const asesSummary = usuarioActual.rol === 'lider'
+    ? agregarPorAsesor(datos, rFiltro.desde, rFiltro.hasta)
+    : asesores;
+
   // Ordenar
   const field = document.getElementById('sortSelect').value;
   const fieldMap = { ventas: 'ventasTotales', upt: 'upt', avt: 'avt', tickets: 'tickets' };
@@ -2610,11 +2657,11 @@ function renderTabla() {
   asesores.sort((a, b) => sortAsc ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]);
 
   // Summary cards — período principal
-  const totalVentas        = asesores.reduce((s, a) => s + a.ventasTotales, 0);
-  const totalTickets       = asesores.reduce((s, a) => s + a.tickets, 0);
-  const totalUnidadesNetas = asesores.reduce((s, a) => s + a.unidadesNetas, 0);
-  const totalVentasNetas   = asesores.reduce((s, a) => s + a.ventasNetas, 0);
-  const totalCostoMP       = asesores.reduce((s, a) => s + a.costoMPTotal, 0);
+  const totalVentas        = asesSummary.reduce((s, a) => s + a.ventasTotales, 0);
+  const totalTickets       = asesSummary.reduce((s, a) => s + a.tickets, 0);
+  const totalUnidadesNetas = asesSummary.reduce((s, a) => s + a.unidadesNetas, 0);
+  const totalVentasNetas   = asesSummary.reduce((s, a) => s + a.ventasNetas, 0);
+  const totalCostoMP       = asesSummary.reduce((s, a) => s + a.costoMPTotal, 0);
   const avgUPT = totalTickets > 0 ? totalUnidadesNetas / totalTickets : 0;
   const avgAVT = totalTickets > 0 ? totalVentasNetas   / totalTickets : 0;
   const ventasSinIVA = totalVentasNetas / 1.19;
@@ -2649,7 +2696,7 @@ function renderTabla() {
   document.getElementById('sumUPT').textContent      = avgUPT.toFixed(2);
   document.getElementById('sumAVT').textContent      = formatPeso(avgAVT);
   document.getElementById('sumTickets').textContent  = totalTickets.toLocaleString('es-CO');
-  document.getElementById('sumAsesores').textContent = asesores.length + ' asesores';
+  document.getElementById('sumAsesores').textContent = asesSummary.length + ' asesores';
   document.getElementById('sumMargen').textContent   = globalMargen !== null ? (globalMargen * 100).toFixed(1) + '%' : '—';
   document.getElementById('sumMargen').style.color   = globalMargen !== null ? (globalMargen >= 0 ? '#111' : 'var(--red)') : '#888';
 
@@ -2942,7 +2989,57 @@ async function intentarLogin() {
       }
       const criteriosBar = document.getElementById('criteriosBar');
       if (criteriosBar) {
+        // criteriosBar superior: solo para admin/directivo (líderes usan el inline debajo del ranking)
         criteriosBar.style.display = usuarioActual.rol === 'lider' ? 'none' : '';
+      }
+
+      // Criterios inline debajo del ranking: siempre visible para todos
+      const ci = document.getElementById('criteriosInline');
+      if (ci) {
+        const esLider = usuarioActual.rol === 'lider';
+        // Determinar tipo del líder desde la tienda (disponible en usuarioActual.tienda)
+        const tiendaNorm = normalizarCanal(usuarioActual.tienda || '');
+        const tipoLiderLocal = getTipoTienda(tiendaNorm);
+
+        if (esLider) {
+          // Lider: mostrar solo su tipo, ocultar el otro
+          document.getElementById('criGrupoA').style.display  = tipoLiderLocal === 'A' ? 'flex' : 'none';
+          document.getElementById('criGrupoB').style.display  = tipoLiderLocal === 'B' ? 'flex' : 'none';
+          document.getElementById('criSepAB').style.display   = 'none';
+          // Etiqueta de criterios muestra el tipo específico
+          if (tipoLiderLocal === 'A') {
+            document.querySelector('#criGrupoA .cri-label').textContent = 'SEMÁFORO TIPO A';
+          } else {
+            document.querySelector('#criGrupoB .cri-label').textContent = 'SEMÁFORO TIPO B';
+          }
+        } else {
+          // Admin/directivo: ambos tipos con separador
+          document.getElementById('criGrupoA').style.display  = 'flex';
+          document.getElementById('criGrupoB').style.display  = 'flex';
+          document.getElementById('criSepAB').style.display   = 'inline-block';
+        }
+        ci.style.display = 'flex';
+
+        // Ocultar criteriosBar si ya está el inline (evita duplicado)
+        if (criteriosBar) criteriosBar.style.display = 'none';
+      }
+
+      // Título de tienda para líderes
+      const tituloTienda = document.getElementById('tituloTienda');
+      if (tituloTienda) {
+        if (usuarioActual.rol === 'lider' && usuarioActual.tienda) {
+          const nombreMostrar = normalizarCanal(usuarioActual.tienda).toUpperCase();
+          tituloTienda.textContent = nombreMostrar;
+          tituloTienda.style.display = 'block';
+        } else {
+          tituloTienda.style.display = 'none';
+        }
+      }
+
+      // Ocultar filtro de canal para líderes (usa id correcto ahora)
+      if (usuarioActual.rol === 'lider') {
+        const canalGroup = document.getElementById('canalFilterGroup');
+        if (canalGroup) canalGroup.style.display = 'none';
       }
 
       resetearTimeout(); // arrancar el timeout de sesión
@@ -3061,15 +3158,17 @@ async function cargarDesdeSupabase() {
     rawDataAll = procesarDesdeSupabase(allRows);
     rawData    = rawDataAll; // por defecto: admin/directivo usan todo
 
-    // Si el usuario es Lider, filtrar rawData a su tienda (para summary cards y cumplimiento)
-    // rawDataAll se mantiene completo para el ranking por tipo
+    // Lider: filtrar rawData a su tienda. rawDataAll permanece completo para el ranking por tipo.
     if (usuarioActual.rol === 'lider' && usuarioActual.tienda) {
       const tiendaLider = normalizarCanal(usuarioActual.tienda);
       tipoLider = getTipoTienda(tiendaLider);
-      rawData   = rawDataAll.filter(r => r.tienda === tiendaLider);
-      console.log('THM Lider — tienda:', tiendaLider, '| tipo:', tipoLider, '| filas filtradas:', rawData.length);
+      // Comparación insensible a mayúsculas por seguridad
+      rawData = rawDataAll.filter(r => r.tienda.toLowerCase() === tiendaLider.toLowerCase());
+      console.log('THM Lider — tienda norm:', tiendaLider, '| tipo:', tipoLider,
+                  '| rawData filas:', rawData.length,
+                  '| rawDataAll filas:', rawDataAll.length);
     }
-    console.log('THM rawData procesado:', rawData.length);
+    console.log('THM rawData final:', rawData.length);
 
     // Calcular rango de años para el calendario (una sola vez)
     for (const r of rawData) {
@@ -3084,16 +3183,6 @@ async function cargarDesdeSupabase() {
     canalSeleccionado = 'todos';
     renderCanales();
 
-    // Para Lider: ocultar selector de canal (solo ve su tienda)
-    if (usuarioActual.rol === 'lider') {
-      const canalesSection = document.getElementById('canalesFilter');
-      if (canalesSection) {
-        canalesSection.style.display = 'none';
-        const labels = document.querySelectorAll('.filter-label');
-        labels.forEach(l => { if (l.textContent.trim() === 'Canal') l.style.display = 'none'; });
-      }
-    }
-
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('errorCarga').style.display   = 'none';
     document.getElementById('dashboard').style.display    = 'block';
@@ -3102,6 +3191,7 @@ async function cargarDesdeSupabase() {
     const fechasValidas = rawData.map(r => r.fecha).filter(Boolean);
     let maxFechaData = fechasValidas.length > 0 ? fechasValidas[0] : new Date();
     for (const f of fechasValidas) { if (f > maxFechaData) maxFechaData = f; }
+    console.log('THM maxFecha:', maxFechaData.toLocaleDateString('es-CO'));
 
     // Por defecto: última fecha disponible con comparativo mismo día año pasado
     const ultimaFecha  = new Date(maxFechaData.getFullYear(), maxFechaData.getMonth(), maxFechaData.getDate());
@@ -3118,32 +3208,7 @@ async function cargarDesdeSupabase() {
     document.getElementById('lastUpdate').textContent =
       `Actualizado: ${now.toLocaleDateString('es-CO')} ${now.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}`;
 
-    renderTabla();
-
-    // Configurar visibilidad del criteriosBar y criteriosInline según rol
-    const _cb = document.getElementById('criteriosBar');
-    const _ci = document.getElementById('criteriosInline');
-    if (usuarioActual.rol === 'lider') {
-      if (_cb) _cb.style.display = 'none';
-      if (_ci) {
-        const tipo = tipoLider || 'A';
-        const c = CRITERIOS[tipo];
-        document.getElementById('criTipoLabel').textContent =
-          'SEMÁFORO TIPO ' + tipo + ' · ' +
-          (tipo === 'A' ? 'Andino · Gran Estación · Tesoro · Unicentro'
-                        : 'Santa Fe · Titán · Hacienda');
-        document.getElementById('criVerdeText').textContent =
-          'UPT≥' + c.upt.verde.toFixed(1) + ' · AVT≥$' + (c.avt.verde / 1000).toFixed(0) + 'K';
-        document.getElementById('criAmarilloText').textContent =
-          'UPT≥' + c.upt.amarillo.toFixed(1) + ' · AVT≥$' + (c.avt.amarillo / 1000).toFixed(0) + 'K';
-        document.getElementById('criRojoText').textContent =
-          'UPT<' + c.upt.amarillo.toFixed(1) + ' · AVT<$' + (c.avt.amarillo / 1000).toFixed(0) + 'K';
-        _ci.style.display = 'flex';
-      }
-    } else {
-      if (_cb) _cb.style.display = '';
-      if (_ci) _ci.style.display = 'none';
-    }
+    try { renderTabla(); } catch(e) { console.error('THM renderTabla error:', e); }
 
     // Popup con fecha más reciente de los datos
     if (maxFechaData) {
