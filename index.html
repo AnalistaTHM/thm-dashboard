@@ -2186,8 +2186,9 @@ function aplicarFechaRapida(tipo) {
   var desde, hasta, desdeCmp, hastaCmp;
 
   if (tipo === 'ayer') {
-    desde = hasta = new Date(anio, mes, dia - 1);
-    desdeCmp = hastaCmp = new Date(anio - 1, mes, dia - 1);
+    // "Ayer" = última fecha con datos cargados (no el día calendario anterior)
+    desde = hasta = new Date(anio, mes, dia);
+    desdeCmp = hastaCmp = new Date(anio - 1, mes, dia);
   } else if (tipo === 'mes') {
     desde    = new Date(anio, mes, 1);
     hasta    = new Date(anio, mes, dia);
