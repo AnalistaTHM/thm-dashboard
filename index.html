@@ -3076,9 +3076,15 @@ function cerrarPopup() {
 
 function procesarDesdeSupabase(rows) {
   const result = [];
+  const idsSeen = new Set(); // deduplicación por id de fila
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.fecha || !r.nro_doc || !r.vendedor) continue;
+    // Deduplicar: si el mismo id ya fue procesado, ignorar
+    if (r.id !== undefined && r.id !== null) {
+      if (idsSeen.has(r.id)) continue;
+      idsSeen.add(r.id);
+    }
     // Parsear "2025-05-21" como hora local, no UTC, para evitar desfase de zona horaria
     const fp = r.fecha.split('-');
     const fechaLocal = fp.length === 3
@@ -3100,12 +3106,16 @@ function procesarDesdeSupabase(rows) {
       valorNeto:  Number(r.valor_neto) || 0
     });
   }
+  console.log('THM procesarDesdeSupabase — filas entrada:', rows.length,
+              '| duplicados descartados:', rows.length - result.length - (rows.filter(r => !r.fecha || !r.nro_doc || !r.vendedor).length));
   return result;
 }
 
 async function fetchPagina(offset, pageSize) {
   const resp = await fetch(
-    `${SUPABASE_URL}/rest/v1/ventas?select=*&order=fecha.asc&limit=${pageSize}&offset=${offset}`,
+    // order=fecha.asc,id.asc garantiza orden determinístico entre páginas.
+    // Solo fecha.asc causa duplicados/saltos cuando varias filas comparten la misma fecha.
+    `${SUPABASE_URL}/rest/v1/ventas?select=*&order=fecha.asc,id.asc&limit=${pageSize}&offset=${offset}`,
     { headers: SUPABASE_HEADERS }
   );
   if (!resp.ok) throw new Error('Error Supabase: ' + resp.status);
