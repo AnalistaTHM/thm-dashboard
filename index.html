@@ -981,14 +981,36 @@
   .cell-ppto-vacio { font-size: 12px; color: var(--text3); }
   .cell-cumpl      { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; }
 
-  /* Fila de "mi tienda" en el ranking de líderes */
-  .ranking-table tbody tr.mi-tienda-row td { background: rgba(0,120,212,0.06); }
-  .ranking-table tbody tr.mi-tienda-row td.col-sticky,
-  .ranking-table tbody tr.mi-tienda-row td.col-sticky-2 { background: rgba(0,120,212,0.06); }
-  .ranking-table tbody tr.mi-tienda-row:hover td { background: rgba(0,120,212,0.10); }
-  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky,
-  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky-2 { background: rgba(0,120,212,0.10); }
-  .mi-tienda-tag { font-size: 9px; color: var(--accent); font-weight: 500; letter-spacing: 0.3px; }
+  /* Fila de "mi tienda" — solo resaltar la celda del nombre, no toda la fila */
+  .ranking-table tbody tr.mi-tienda-row td { background: transparent; }
+  .ranking-table tbody tr.mi-tienda-row:hover td { background: var(--surface2); }
+
+  /* Celda sticky del nombre: fondo negro, texto blanco */
+  .ranking-table tbody tr.mi-tienda-row td.col-sticky-2 {
+    background: #111111 !important;
+    border-radius: 0;
+  }
+  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky-2 { background: #222222 !important; }
+  .ranking-table tbody tr.mi-tienda-row td.col-sticky { background: transparent !important; }
+  .ranking-table tbody tr.mi-tienda-row:hover td.col-sticky { background: var(--surface2) !important; }
+
+  .ranking-table tbody tr.mi-tienda-row .asesor-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .ranking-table tbody tr.mi-tienda-row .asesor-tienda {
+    color: #99ffdb;
+    font-weight: 500;
+  }
+  .mi-tienda-tag { font-size: 9px; color: #99ffdb; font-weight: 600; letter-spacing: 0.3px; }
+
+  /* Métricas de la fila: un poco más grandes para reforzar el énfasis */
+  .ranking-table tbody tr.mi-tienda-row .metric-value,
+  .ranking-table tbody tr.mi-tienda-row .semaforo,
+  .ranking-table tbody tr.mi-tienda-row .tickets-badge,
+  .ranking-table tbody tr.mi-tienda-row .cell-ppto,
+  .ranking-table tbody tr.mi-tienda-row .cell-cumpl { font-size: 13px; font-weight: 600; }
 
   /* Criterios de semáforo inline (debajo del título del ranking) */
   .criterios-inline {
@@ -1731,11 +1753,11 @@
           <th class="col-sticky">#</th>
           <th class="col-sticky-2" onclick="sortBy('nombre')">Asesor <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('ventas')" class="sorted">Ventas <span class="sort-icon">↓</span></th>
+          <th class="col-cumpl">Ppto</th>
+          <th class="col-cumpl">% Cumpl.</th>
           <th class="col-tickets" onclick="sortBy('tickets')">Tickets <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('upt')">UPT <span class="sort-icon">↕</span></th>
           <th class="col-avt" onclick="sortBy('avt')">AVT <span class="sort-icon">↕</span></th>
-          <th class="col-cumpl">Ppto</th>
-          <th class="col-cumpl">% Cumpl.</th>
           <th class="col-estado">Estado</th>
         </tr>
       </thead>
@@ -1846,21 +1868,40 @@ const EXCLUIR_VENDEDORES = ['THERMOS S.A.S', 'THERMOS SAS', 'THERMOS S.A.S.'];
 // MAPEO DE CANALES
 // ═══════════════════════════════════════════
 const CANAL_MAP = {
-  'PDV ANDINO BOGOTA':           'Andino',
-  'PDV GRAN ESTACION BOGOTA':    'Gran Estacion',
+  'PDV ANDINO BOGOTA':               'Andino',
+  'PDV GRAN ESTACION BOGOTA':        'Gran Estacion',
   'PDV HACIENDA STA BARBARA BOGOTA': 'Hacienda',
-  'PDV SANTA FE BOGOTA':         'Santafe Bog',
-  'PDV TESORO MEDELLIN':         'Tesoro',
-  'PDV TITAN PLAZA':             'Titan',
-  'PDV UNICENTRO BOGOTA':        'Unicentro',
+  'PDV SANTA FE BOGOTA':             'Santa Fe',
+  'PDV TESORO MEDELLIN':             'Tesoro',
+  'PDV TITAN PLAZA':                 'Titan',
+  'PDV UNICENTRO BOGOTA':            'Unicentro',
+  // Aliases de nombres guardados en Supabase con el formato antiguo
+  'SANTAFE BOG':                     'Santa Fe',
+  'SANTAFE BOGOTA':                  'Santa Fe',
+  'SANTA FE BOG':                    'Santa Fe',
+  'SANTA FE BOGOTA':                 'Santa Fe',
+  'SANTA FE':                        'Santa Fe',
+  // Aliases sin prefijo PDV (si quedaron así en la BD)
+  'ANDINO BOGOTA':                   'Andino',
+  'GRAN ESTACION BOGOTA':            'Gran Estacion',
+  'HACIENDA STA BARBARA BOGOTA':     'Hacienda',
+  'TESORO MEDELLIN':                 'Tesoro',
+  'TITAN PLAZA':                     'Titan',
+  'UNICENTRO BOGOTA':                'Unicentro',
+  // Nombres cortos normalizados (idempotente — si ya está normalizado, devuelve igual)
+  'ANDINO':                          'Andino',
+  'GRAN ESTACION':                   'Gran Estacion',
+  'HACIENDA':                        'Hacienda',
+  'TESORO':                          'Tesoro',
+  'TITAN':                           'Titan',
+  'UNICENTRO':                       'Unicentro',
 };
 
 function normalizarCanal(raw) {
+  if (!raw) return '';
   const key = raw.trim().toUpperCase();
-  for (const [patron, nombre] of Object.entries(CANAL_MAP)) {
-    if (key === patron.toUpperCase()) return nombre;
-  }
-  // Si no está en el mapa, quitar prefijo PDV y retornar limpio
+  if (CANAL_MAP[key]) return CANAL_MAP[key];
+  // Fallback: quitar prefijo PDV y retornar limpio
   return raw.replace(/^PDV\s+/i, '').trim();
 }
 
@@ -2840,8 +2881,11 @@ function renderTabla() {
     const rankLabel = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
 
     // Resaltar fila si es la tienda propia del líder
+    const tiendaLiderNorm = normalizarCanal(usuarioActual.tienda || '').toLowerCase().trim();
+    const tiendaFilaNorm  = (a.tiendaPrincipal || '').toLowerCase().trim();
     const esMiTienda = usuarioActual.rol === 'lider'
-      && a.tiendaPrincipal === normalizarCanal(usuarioActual.tienda);
+      && tiendaLiderNorm.length > 0
+      && tiendaFilaNorm === tiendaLiderNorm;
 
     const tr = document.createElement('tr');
     tr.className = (rankClass + (esMiTienda ? ' mi-tienda-row' : '')).trim();
@@ -2857,6 +2901,16 @@ function renderTabla() {
           <span class="metric-value" style="color:${a.ventasTotales < 0 ? 'var(--red)' : '#111111'}">${formatPeso(a.ventasTotales)}</span>
         </div>
       </td>
+      <td class="col-cumpl">
+        ${a.pptoAsignado > 0
+          ? `<span class="cell-ppto">${formatPeso(a.pptoAsignado)}</span>`
+          : '<span class="cell-ppto-vacio">—</span>'}
+      </td>
+      <td class="col-cumpl">
+        ${a.cumplPpto !== null
+          ? `<span class="cell-cumpl" style="color:${a.cumplPpto >= 1 ? 'var(--green)' : a.cumplPpto >= 0.8 ? 'var(--yellow)' : 'var(--red)'};">${(a.cumplPpto * 100).toFixed(1)}%</span>`
+          : '<span class="cell-ppto-vacio">—</span>'}
+      </td>
       <td class="col-tickets"><span class="tickets-badge">${a.tickets}</span></td>
       <td>
         <span class="semaforo ${semUPT}">
@@ -2869,16 +2923,6 @@ function renderTabla() {
           <span class="dot"></span>
           ${formatPeso(a.avt)}
         </span>
-      </td>
-      <td class="col-cumpl">
-        ${a.pptoAsignado > 0
-          ? `<span class="cell-ppto">${formatPeso(a.pptoAsignado)}</span>`
-          : '<span class="cell-ppto-vacio">—</span>'}
-      </td>
-      <td class="col-cumpl">
-        ${a.cumplPpto !== null
-          ? `<span class="cell-cumpl" style="color:${a.cumplPpto >= 1 ? 'var(--green)' : a.cumplPpto >= 0.8 ? 'var(--yellow)' : 'var(--red)'};">${(a.cumplPpto * 100).toFixed(1)}%</span>`
-          : '<span class="cell-ppto-vacio">—</span>'}
       </td>
       <td class="col-estado">
         <span class="semaforo ${estadoGeneral}">
@@ -3175,6 +3219,11 @@ async function cargarDesdeSupabase() {
 
     console.log('THM filas descargadas:', allRows.length, '| procesando...');
     rawDataAll = procesarDesdeSupabase(allRows);
+    // DIAGNÓSTICO — muestra los valores exactos de tienda en Supabase (ver en F12 → Consola)
+    const tiendasUnicas = [...new Set(allRows.map(r => r.tienda).filter(Boolean))].sort();
+    console.log('THM tiendas en Supabase (valores exactos):', tiendasUnicas);
+    console.log('THM tiendas normalizadas:', tiendasUnicas.map(t => t + ' → ' + normalizarCanal(t)));
+    console.log('THM usuarioActual.tienda:', usuarioActual.tienda, '→ norm:', normalizarCanal(usuarioActual.tienda || ''));
     rawData    = rawDataAll; // por defecto: admin/directivo usan todo
 
     // Lider: filtrar rawData a su tienda. rawDataAll permanece completo para el ranking por tipo.
