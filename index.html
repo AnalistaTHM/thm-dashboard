@@ -2296,7 +2296,7 @@ function descargarPDF() {
 }
 
 function aplicarFechaRapida(tipo) {
-  // Fecha máxima disponible en los datos
+  // Fecha máxima disponible en los datos de ventas
   let maxFecha = new Date();
   if (rawData.length > 0) {
     maxFecha = rawData[0].fecha;
@@ -2304,27 +2304,52 @@ function aplicarFechaRapida(tipo) {
       if (rawData[i].fecha > maxFecha) maxFecha = rawData[i].fecha;
     }
   }
-  const hoy  = new Date(maxFecha.getFullYear(), maxFecha.getMonth(), maxFecha.getDate());
-  const anio = hoy.getFullYear();
-  const mes  = hoy.getMonth();
-  const dia  = hoy.getDate();
+  // Para "ayer": usa la última fecha de ventas (puede ser anterior al día real)
+  const ultimaVenta = new Date(maxFecha.getFullYear(), maxFecha.getMonth(), maxFecha.getDate());
+
+  // Para "mes" y "año": usa el calendario real (hoy), no la última venta.
+  // Así se ve el mes/año actual aunque las ventas aún no estén cargadas para ese período.
+  const hoyReal = new Date();
+  const hoyCalendario = new Date(hoyReal.getFullYear(), hoyReal.getMonth(), hoyReal.getDate());
 
   var desde, hasta, desdeCmp, hastaCmp;
 
   if (tipo === 'ayer') {
-    // "Ayer" = última fecha con datos cargados (no el día calendario anterior)
+    // "Ayer" = última fecha cargada en ventas
+    const anio = ultimaVenta.getFullYear();
+    const mes  = ultimaVenta.getMonth();
+    const dia  = ultimaVenta.getDate();
     desde = hasta = new Date(anio, mes, dia);
     desdeCmp = hastaCmp = new Date(anio - 1, mes, dia);
+
   } else if (tipo === 'mes') {
+    // Mes del calendario real — "hasta" es el menor entre hoy y la última venta
+    const anio = hoyCalendario.getFullYear();
+    const mes  = hoyCalendario.getMonth();
+    // Si hay ventas del mes actual, hasta = última venta. Si no (ventas aún en mes anterior), hasta = hoy.
+    const hastaReal = ultimaVenta.getFullYear() === anio && ultimaVenta.getMonth() === mes
+      ? ultimaVenta
+      : hoyCalendario;
+    const diaCmp = hastaReal.getDate();
     desde    = new Date(anio, mes, 1);
-    hasta    = new Date(anio, mes, dia);
+    hasta    = hastaReal;
     desdeCmp = new Date(anio - 1, mes, 1);
-    hastaCmp = new Date(anio - 1, mes, dia);
+    hastaCmp = new Date(anio - 1, mes, diaCmp);
+
   } else if (tipo === 'anio') {
+    // Año del calendario real
+    const anio = hoyCalendario.getFullYear();
+    const mes  = hoyCalendario.getMonth();
+    const hastaReal = ultimaVenta.getFullYear() === anio
+      ? ultimaVenta
+      : hoyCalendario;
+    const mesCmp = hastaReal.getMonth();
+    const diaCmp = hastaReal.getDate();
     desde    = new Date(anio, 0, 1);
-    hasta    = new Date(anio, mes, dia);
+    hasta    = hastaReal;
     desdeCmp = new Date(anio - 1, 0, 1);
-    hastaCmp = new Date(anio - 1, mes, dia);
+    hastaCmp = new Date(anio - 1, mesCmp, diaCmp);
+
   } else { // todo
     var fechasValidas = rawData.map(function(r){ return r.fecha; }).filter(Boolean);
     if (!fechasValidas.length) return;
