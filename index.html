@@ -194,13 +194,13 @@
   .period-tag-cmp  { background: #e8f0fe; color: var(--accent); }
   .summary-row {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     background: var(--border);
     gap: 1px;
   }
   .summary-card {
     background: var(--surface);
-    padding: 18px 24px;
+    padding: 16px 14px;
     display: flex;
     flex-direction: column;
   }
@@ -215,7 +215,7 @@
   }
   .sc-val {
     font-family: 'Calibri Light', Calibri, Arial, sans-serif;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: #111;
     line-height: 1;
@@ -1465,6 +1465,35 @@
     margin-top: 8px;
     letter-spacing: 1px;
   }
+  /* SIDEBAR NAV */
+  #sidebarNav {
+    flex-direction: column;
+    width: 190px;
+    min-width: 190px;
+    background: #111827;
+    min-height: calc(100vh - 52px);
+    padding: 20px 12px;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+  .sidebar-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #c7cbd6;
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 11px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sidebar-btn:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .sidebar-btn.active { background: #ffffff; color: #111827; font-weight: 600; }
+  @media (max-width: 900px) {
+    #sidebarNav { flex-direction: row; width: 100%; min-width: 0; min-height: auto; overflow-x: auto; }
+  }
 </style>
 </head>
 <body>
@@ -1550,30 +1579,15 @@
 <!-- ERROR DE CARGA -->
 <div id="errorCarga" class="login-error-data" style="display:none"></div>
 
+<div id="appBody" style="display:flex; align-items:flex-start;">
+<nav id="sidebarNav" style="display:none;">
+  <button class="sidebar-btn active" id="navBtnDashboard" onclick="cambiarVista('dashboard')">Dashboard</button>
+  <button class="sidebar-btn" id="navBtnProductos" onclick="cambiarVista('productos')">Ranking productos</button>
+</nav>
 <!-- DASHBOARD (oculto hasta cargar datos) -->
-<div id="dashboard" style="display:none">
+<div id="dashboard" style="display:none; flex:1; min-width:0;">
 
-  <!-- CRITERIOS SEMÁFORO -->
-  <div id="criteriosBar" style="padding: 10px 32px; border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
-    <span style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); letter-spacing:1px; font-weight:700;">SEMÁFORO</span>
-    <div style="display:flex; gap:32px; flex-wrap:wrap;">
-      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); display:flex; gap:10px; align-items:center;">
-        <span style="font-weight:700; color:#111;">TIPO A</span>
-        <span>🟢 UPT≥2,8 · AVT≥$380K</span>
-        <span>🟡 UPT≥2,5 · AVT≥$350K</span>
-        <span>🔴 UPT&lt;2,5 · AVT&lt;$350K</span>
-      </div>
-      <div style="width:1px; background:var(--border);"></div>
-      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); display:flex; gap:10px; align-items:center;">
-        <span style="font-weight:700; color:#111;">TIPO B</span>
-        <span>🟢 UPT≥2,5 · AVT≥$350K</span>
-        <span>🟡 UPT≥2,3 · AVT≥$320K</span>
-        <span>🔴 UPT&lt;2,3 · AVT&lt;$320K</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- FILTROS -->
+  <!-- FILTROS (compartidos entre Dashboard y Ranking productos) -->
   <div class="filters-wrap">
     <div class="filters filters-row1">
       <span class="filter-label">Período</span>
@@ -1592,12 +1606,19 @@
         </select>
       </div>
       <div class="filter-sep"></div>
-      <span class="filter-label">Ordenar por</span>
+      <span class="filter-label" id="sortLabel">Ordenar por</span>
       <select class="filter-select" id="sortSelect" onchange="renderTabla()">
         <option value="ventas">Ventas totales</option>
         <option value="upt">UPT</option>
         <option value="avt">AVT</option>
         <option value="tickets">Tickets</option>
+      </select>
+      <select class="filter-select" id="sortProductosSelect" style="display:none" onchange="renderProductos()">
+        <option value="alfabetico">Alfabético</option>
+        <option value="ventasNetas">Ventas netas</option>
+        <option value="unidades">Unidades vendidas</option>
+        <option value="margen">Margen</option>
+        <option value="dcto">Descuento promedio</option>
       </select>
     </div>
     <!-- Fecha personalizada (oculta por defecto) -->
@@ -1630,6 +1651,27 @@
             <input type="date" id="hastaComparacion" class="date-input date-input-cmp" onchange="aplicarFechaManual()">
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+<div id="vistaDashboardContent">
+  <!-- CRITERIOS SEMÁFORO -->
+  <div id="criteriosBar" style="padding: 10px 32px; border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+    <span style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); letter-spacing:1px; font-weight:700;">SEMÁFORO</span>
+    <div style="display:flex; gap:32px; flex-wrap:wrap;">
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); display:flex; gap:10px; align-items:center;">
+        <span style="font-weight:700; color:#111;">TIPO A</span>
+        <span>🟢 UPT≥2,8 · AVT≥$380K</span>
+        <span>🟡 UPT≥2,5 · AVT≥$350K</span>
+        <span>🔴 UPT&lt;2,5 · AVT&lt;$350K</span>
+      </div>
+      <div style="width:1px; background:var(--border);"></div>
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text2); display:flex; gap:10px; align-items:center;">
+        <span style="font-weight:700; color:#111;">TIPO B</span>
+        <span>🟢 UPT≥2,5 · AVT≥$350K</span>
+        <span>🟡 UPT≥2,3 · AVT≥$320K</span>
+        <span>🔴 UPT&lt;2,3 · AVT&lt;$320K</span>
       </div>
     </div>
   </div>
@@ -1713,6 +1755,16 @@
         <div class="sc-cmp-sub" style="display:none">Sin IVA</div>
         <div class="sc-delta" id="deltaCmpMargen" style="display:none"></div>
       </div>
+      <!-- Dcto prom. -->
+      <div class="summary-card" id="cardDctoProm">
+        <div class="sc-label">Dcto prom.</div>
+        <div class="sc-val" id="sumDctoProm">—</div>
+        <div class="sc-sub">vs precio de lista</div>
+        <div class="sc-divider" id="cmpDivDctoProm" style="display:none"></div>
+        <div class="sc-cmp-val" id="cmpDctoProm" style="display:none">—</div>
+        <div class="sc-cmp-sub" style="display:none">vs precio de lista</div>
+        <div class="sc-delta" id="deltaCmpDctoProm" style="display:none"></div>
+      </div>
     </div>
   </div>
 
@@ -1765,7 +1817,32 @@
     </table>
     </div>
   </div>
-</div>
+</div><!-- /vistaDashboardContent -->
+
+<!-- RANKING PRODUCTOS -->
+<div id="vistaProductosContent" style="display:none">
+  <div class="main-content">
+    <div class="section-title">RANKING PRODUCTOS</div>
+    <div class="ranking-scroll-wrap">
+    <table class="ranking-table">
+      <thead>
+        <tr>
+          <th class="col-sticky" onclick="sortByProducto('alfabetico')">Producto <span class="sort-icon">↕</span></th>
+          <th onclick="sortByProducto('ventasNetas')">Ventas netas <span class="sort-icon">↕</span></th>
+          <th onclick="sortByProducto('unidades')">Unidades vendidas <span class="sort-icon">↕</span></th>
+          <th>Precio promedio</th>
+          <th onclick="sortByProducto('dcto')">Descuento prom. <span class="sort-icon">↕</span></th>
+          <th id="colMargenProducto" onclick="sortByProducto('margen')">Margen <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tablaProductosBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div><!-- /vistaProductosContent -->
+
+</div><!-- /dashboard -->
+</div><!-- /appBody -->
 
 <script>
 // ═══════════════════════════════════════════
@@ -1935,8 +2012,8 @@ function parseCSVFormat(lines, data, sep) {
     const primerCol = (cols[0] || '').toLowerCase();
     if (primerCol.startsWith('gran total') || primerCol.startsWith('subtotal') || primerCol === '') continue;
 
-    // Columnas fijas según formato SIESA + Costo MP
-    // [0]=Tienda  [1]=Fecha  [2]=NroDoc  [3]=Cédula  [4]=Nombre  [5]=Ítem  [6]=Cantidad  [7]=CostoMP  [8]=ValorNeto
+    // Columnas fijas según formato SIESA + Costo MP + Precio unit.
+    // [0]=Tienda  [1]=Fecha  [2]=NroDoc  [3]=Cédula  [4]=Nombre  [5]=Ítem  [6]=Cantidad  [7]=CostoMP  [8]=ValorNeto  [9]=PrecioUnit (nuevo, opcional)
     const tienda         = cols[0] || '';
     const fecha          = cols[1] || '';
     const nroDoc         = cols[2] || '';
@@ -1946,12 +2023,14 @@ function parseCSVFormat(lines, data, sep) {
     const cantStr        = cols[6] || '0';
     const costoStr       = cols[7] || '0';
     const valStr         = cols[8] || '0';
+    const precioUnitStr  = cols[9] || '0'; // Precio unit. - columna nueva, puede no existir en CSV viejos
 
     if (!fecha || !nroDoc || !nombreVendedor) continue;
 
-    const cantidad  = parseFloat(cantStr.replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
-    const valorNeto = parseValor(valStr);
-    const costoMP   = parseValor(costoStr);
+    const cantidad   = parseFloat(cantStr.replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    const valorNeto  = parseValor(valStr);
+    const costoMP    = parseValor(costoStr);
+    const precioUnit = cols.length > 9 ? parseValor(precioUnitStr) : null;
 
     data.push({
       tienda: normalizarCanal(tienda),
@@ -1962,7 +2041,8 @@ function parseCSVFormat(lines, data, sep) {
       descItem: descItem.trim().toUpperCase(),
       cantidad,
       costoMP,
-      valorNeto
+      valorNeto,
+      precioUnit
     });
   }
 }
@@ -1972,9 +2052,14 @@ function parseCSVFormat(lines, data, sep) {
 function parseFecha(str) {
   if (!str) return null;
   str = str.trim();
-  const m = str.match(/(\d{1,2})\/(\d{2})\/(\d{4})/);
+  // Formato D/M/AAAA (4 dígitos año) - export normal de SIESA
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
-  const m2 = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+  // Formato D/M/AA (2 dígitos año) - export corregido vía Excel
+  const mCorto = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (mCorto) return new Date(2000 + parseInt(mCorto[3]), parseInt(mCorto[2]) - 1, parseInt(mCorto[1]));
+  // Formato AAAA-MM-DD (ISO)
+  const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m2) return new Date(parseInt(m2[1]), parseInt(m2[2]) - 1, parseInt(m2[3]));
   return null;
 }
@@ -2044,7 +2129,7 @@ function aplicarFechaManual() {
   if (clr1) clr1.style.display = (d1 || h1) ? 'inline-flex' : 'none';
   if (clr2) clr2.style.display = (d2 || h2) ? 'inline-flex' : 'none';
 
-  renderTabla();
+  renderVistaActual();
 }
 
 function sincronizarInputsFechas() {
@@ -2069,7 +2154,7 @@ function limpiarFechas() {
   if (h) h.value = '';
   var clr = document.getElementById('clearPrincipal');
   if (clr) clr.style.display = 'none';
-  renderTabla();
+  renderVistaActual();
 }
 
 function limpiarComparacion() {
@@ -2080,7 +2165,7 @@ function limpiarComparacion() {
   if (h) h.value = '';
   var clr = document.getElementById('clearComparacion');
   if (clr) clr.style.display = 'none';
-  renderTabla();
+  renderVistaActual();
 }
 
 function getFechaFiltro() {
@@ -2164,7 +2249,7 @@ async function fetchPresupuesto() {
       presupuestoData.push({ fecha: d, tienda: String(r.tienda).trim(), ppto });
     });
     console.log('THM presupuesto cargado:', presupuestoData.length, 'de', json.rows.length, 'registros');
-    renderTabla();
+    renderVistaActual();
   } catch(err) {
     console.warn('THM presupuesto error:', err.message);
   }
@@ -2264,7 +2349,15 @@ function cerrarSesion() {
   clearTimeout(timeoutSesion);
   usuarioActual = { email: '', rol: '', tienda: '' };
   rawData = [];
+  vistaActual = 'dashboard';
+  document.getElementById('navBtnDashboard').classList.add('active');
+  document.getElementById('navBtnProductos').classList.remove('active');
+  document.getElementById('vistaDashboardContent').style.display = '';
+  document.getElementById('vistaProductosContent').style.display = 'none';
+  document.getElementById('sortSelect').style.display = '';
+  document.getElementById('sortProductosSelect').style.display = 'none';
   document.getElementById('dashboard').style.display    = 'none';
+  document.getElementById('sidebarNav').style.display    = 'none';
   document.getElementById('uploadAdminBtn').style.display = 'none';
   document.getElementById('pdfBtn').style.display = 'none';
   document.getElementById('loginEmail').value    = '';
@@ -2383,7 +2476,7 @@ function aplicarFechaRapida(tipo) {
   document.querySelectorAll('.quick-btn').forEach(function(b){ b.classList.remove('active'); });
   if (event && event.target) event.target.classList.add('active');
 
-  renderTabla();
+  renderVistaActual();
 }
 
 function filtrarDatos(rangoFecha) {
@@ -2435,6 +2528,7 @@ function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
         ventasNetas: 0,
         unidadesNetas: 0,
         costoMPTotal: 0,
+        precioListaTotal: 0,
       };
     }
     const a = mapa[keyAsesor];
@@ -2448,11 +2542,12 @@ function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
       a.tickets.add(r.nroDoc);
     }
 
-    // Netos para UPT y AVT: todas las filas excepto bolsas/cajas
+    // Netos para UPT, AVT y Dcto prom.: todas las filas excepto bolsas/cajas
     if (!esExcluido(r.descItem)) {
       a.ventasNetas += r.valorNeto;
       a.unidadesNetas += r.cantidad;
       a.costoMPTotal += r.costoMP || 0;
+      a.precioListaTotal += (r.precioUnit || 0) * r.cantidad;
     }
   });
 
@@ -2472,10 +2567,14 @@ function agregarPorAsesor(datos, rangoDesde, rangoHasta) {
       ventasNetas:   a.ventasNetas,
       unidadesNetas: a.unidadesNetas,
       costoMPTotal:  a.costoMPTotal,
+      precioListaTotal: a.precioListaTotal,
       upt:           a.unidadesNetas / tickets,
       avt:           a.ventasNetas / tickets,
       margenBruto:   a.ventasNetas > 0
         ? ((a.ventasNetas / 1.19) - a.costoMPTotal) / (a.ventasNetas / 1.19)
+        : null,
+      dctoProm:      (a.ventasNetas > 0 && a.precioListaTotal > 0)
+        ? 1 - (a.ventasNetas / a.precioListaTotal)
         : null,
       pptoAsignado:  pptoAsig,
       cumplPpto:     pptoAsig > 0 ? a.ventasTotales / pptoAsig : null,
@@ -2662,7 +2761,7 @@ function renderCanales() {
 function onCanalSelect() {
   const sel = document.getElementById('canalSelect');
   canalSeleccionado = sel ? sel.value : 'todos';
-  renderTabla();
+  renderVistaActual();
 }
 
 function onPeriodoSelect() {
@@ -2701,6 +2800,110 @@ function formatPesoFull(n) {
 // ═══════════════════════════════════════════
 // RENDER TABLA
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// NAVEGACIÓN ENTRE VISTAS (Dashboard / Ranking productos)
+// ═══════════════════════════════════════════
+let vistaActual = 'dashboard';
+
+function cambiarVista(vista) {
+  vistaActual = vista;
+  document.getElementById('navBtnDashboard').classList.toggle('active', vista === 'dashboard');
+  document.getElementById('navBtnProductos').classList.toggle('active', vista === 'productos');
+  document.getElementById('vistaDashboardContent').style.display = vista === 'dashboard' ? '' : 'none';
+  document.getElementById('vistaProductosContent').style.display = vista === 'productos' ? '' : 'none';
+  document.getElementById('sortSelect').style.display = vista === 'dashboard' ? '' : 'none';
+  document.getElementById('sortProductosSelect').style.display = vista === 'productos' ? '' : 'none';
+  document.getElementById('sortLabel').textContent = vista === 'dashboard' ? 'Ordenar por' : 'Ordenar por';
+  renderVistaActual();
+}
+
+function renderVistaActual() {
+  if (vistaActual === 'productos') {
+    renderProductos();
+  } else {
+    renderTabla();
+  }
+}
+
+// ═══════════════════════════════════════════
+// RANKING DE PRODUCTOS
+// ═══════════════════════════════════════════
+let sortProductoAsc = false;
+
+function sortByProducto(field) {
+  const select = document.getElementById('sortProductosSelect');
+  if (select.value === field) {
+    sortProductoAsc = !sortProductoAsc;
+  } else {
+    select.value = field;
+    sortProductoAsc = false;
+  }
+  renderProductos();
+}
+
+function computeProductos(datos) {
+  // Mismo criterio de exclusión que Ventas Netas/UPT/AVT: sin BOLSA/CAJA, sin THERMOS S.A.S.
+  const mapa = {};
+  datos.forEach(r => {
+    if (r.esVendedorInterno) return;
+    if (esExcluido(r.descItem)) return;
+    if (!mapa[r.descItem]) {
+      mapa[r.descItem] = { producto: r.descItem, ventasNetas: 0, unidades: 0, costoMPTotal: 0, precioListaTotal: 0 };
+    }
+    const p = mapa[r.descItem];
+    p.ventasNetas += r.valorNeto;
+    p.unidades += r.cantidad;
+    p.costoMPTotal += r.costoMP || 0;
+    p.precioListaTotal += (r.precioUnit || 0) * r.cantidad;
+  });
+  return Object.values(mapa).map(p => {
+    const ventasSinIVA = p.ventasNetas / 1.19;
+    return {
+      producto: p.producto,
+      ventasNetas: p.ventasNetas,
+      unidades: p.unidades,
+      precioPromedio: p.unidades > 0 ? p.ventasNetas / p.unidades : 0,
+      dctoProm: (p.ventasNetas > 0 && p.precioListaTotal > 0) ? 1 - (p.ventasNetas / p.precioListaTotal) : null,
+      margen: ventasSinIVA > 0 ? (ventasSinIVA - p.costoMPTotal) / ventasSinIVA : null,
+    };
+  });
+}
+
+function renderProductos() {
+  const datos = filtrarDatos();
+  const productos = computeProductos(datos);
+
+  const field = document.getElementById('sortProductosSelect').value;
+  if (field === 'alfabetico') {
+    productos.sort((a, b) => sortProductoAsc
+      ? b.producto.localeCompare(a.producto)
+      : a.producto.localeCompare(b.producto));
+  } else {
+    const fieldMap = { ventasNetas: 'ventasNetas', unidades: 'unidades', margen: 'margen', dcto: 'dctoProm' };
+    const key = fieldMap[field] || 'ventasNetas';
+    productos.sort((a, b) => {
+      const av = a[key] === null || a[key] === undefined ? -Infinity : a[key];
+      const bv = b[key] === null || b[key] === undefined ? -Infinity : b[key];
+      return sortProductoAsc ? av - bv : bv - av;
+    });
+  }
+
+  const verMargen = usuarioActual.rol !== 'lider';
+  document.getElementById('colMargenProducto').style.display = verMargen ? '' : 'none';
+
+  const tbody = document.getElementById('tablaProductosBody');
+  tbody.innerHTML = productos.map(p => `
+    <tr>
+      <td class="col-sticky">${p.producto}</td>
+      <td>${formatPeso(p.ventasNetas)}</td>
+      <td>${p.unidades.toLocaleString('es-CO')}</td>
+      <td>${formatPeso(p.precioPromedio)}</td>
+      <td>${p.dctoProm !== null ? (p.dctoProm * 100).toFixed(1) + '%' : '—'}</td>
+      ${verMargen ? `<td>${p.margen !== null ? (p.margen * 100).toFixed(1) + '%' : '—'}</td>` : ''}
+    </tr>
+  `).join('');
+}
+
 function renderTabla() {
   const datos   = filtrarDatos();
   const rFiltro = getFechaFiltro();
@@ -2734,20 +2937,22 @@ function renderTabla() {
   const totalUnidadesNetas = asesSummary.reduce((s, a) => s + a.unidadesNetas, 0);
   const totalVentasNetas   = asesSummary.reduce((s, a) => s + a.ventasNetas, 0);
   const totalCostoMP       = asesSummary.reduce((s, a) => s + a.costoMPTotal, 0);
+  const totalPrecioLista   = asesSummary.reduce((s, a) => s + a.precioListaTotal, 0);
   const avgUPT = totalTickets > 0 ? totalUnidadesNetas / totalTickets : 0;
   const avgAVT = totalTickets > 0 ? totalVentasNetas   / totalTickets : 0;
   const ventasSinIVA = totalVentasNetas / 1.19;
   const globalMargen = ventasSinIVA > 0 ? (ventasSinIVA - totalCostoMP) / ventasSinIVA : null;
+  const globalDcto = (totalVentasNetas > 0 && totalPrecioLista > 0) ? 1 - (totalVentasNetas / totalPrecioLista) : null;
 
   // Helper to show/hide comparison elements
   function showCmpEls(show) {
-    ['cmpDivVentas','cmpDivUPT','cmpDivAVT','cmpDivTickets','cmpDivCumpl','cmpDivCumplCompleto','cmpDivMargen'].forEach(id => {
+    ['cmpDivVentas','cmpDivUPT','cmpDivAVT','cmpDivTickets','cmpDivCumpl','cmpDivCumplCompleto','cmpDivMargen','cmpDivDctoProm'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
-    ['cmpVentas','cmpUPT','cmpAVT','cmpTickets','cmpCumplimiento','cmpCumplimientoCompleto','cmpMargen'].forEach(id => {
+    ['cmpVentas','cmpUPT','cmpAVT','cmpTickets','cmpCumplimiento','cmpCumplimientoCompleto','cmpMargen','cmpDctoProm'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
-    ['deltaCmpVentas','deltaCmpUPT','deltaCmpAVT','deltaCmpTickets','deltaCmpCumplimiento','deltaCmpCumplimientoCompleto','deltaCmpMargen'].forEach(id => {
+    ['deltaCmpVentas','deltaCmpUPT','deltaCmpAVT','deltaCmpTickets','deltaCmpCumplimiento','deltaCmpCumplimientoCompleto','deltaCmpMargen','deltaCmpDctoProm'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none';
     });
     document.querySelectorAll('.sc-cmp-sub').forEach(el => el.style.display = show ? '' : 'none');
@@ -2771,8 +2976,9 @@ function renderTabla() {
   document.getElementById('sumAsesores').textContent = asesSummary.length + ' asesores';
   document.getElementById('sumMargen').textContent   = globalMargen !== null ? (globalMargen * 100).toFixed(1) + '%' : '—';
   document.getElementById('sumMargen').style.color   = globalMargen !== null ? (globalMargen >= 0 ? '#111' : 'var(--red)') : '#888';
+  document.getElementById('sumDctoProm').textContent = globalDcto !== null ? (globalDcto * 100).toFixed(1) + '%' : '—';
 
-  // Margen solo para admin y directivo
+  // Margen solo para admin y directivo; Dcto prom. visible para todos los roles (incl. líder)
   const verMargen = usuarioActual.rol !== 'lider';
   document.getElementById('cardMargen').style.display = verMargen ? '' : 'none';
 
@@ -2834,8 +3040,10 @@ function renderTabla() {
     const cmpUPT      = cmpTickets > 0 ? cmpUnidades / cmpTickets : 0;
     const cmpAVT      = cmpTickets > 0 ? cmpVentasN  / cmpTickets : 0;
     const cmpCostoMP  = asesoresCmp.reduce((s, a) => s + a.costoMPTotal, 0);
+    const cmpPrecioLista = asesoresCmp.reduce((s, a) => s + a.precioListaTotal, 0);
     const cmpVentasSIVA = cmpVentasN / 1.19;
     const cmpMargen   = cmpVentasSIVA > 0 ? (cmpVentasSIVA - cmpCostoMP) / cmpVentasSIVA : null;
+    const cmpDcto     = (cmpVentasN > 0 && cmpPrecioLista > 0) ? 1 - (cmpVentasN / cmpPrecioLista) : null;
 
     document.getElementById('cmpVentas').textContent   = formatPeso(cmpVentas);
     document.getElementById('cmpUPT').textContent      = cmpUPT.toFixed(2);
@@ -2844,6 +3052,7 @@ function renderTabla() {
     const cmpAsEl = document.getElementById('cmpAsesores');
     if (cmpAsEl) { cmpAsEl.textContent = asesoresCmp.length + ' asesores'; cmpAsEl.style.display = ''; }
     document.getElementById('cmpMargen').textContent   = cmpMargen !== null ? (cmpMargen * 100).toFixed(1) + '%' : '—';
+    document.getElementById('cmpDctoProm').textContent = cmpDcto !== null ? (cmpDcto * 100).toFixed(1) + '%' : '—';
 
     setDelta('deltaCmpVentas',  cmpVentas,  totalVentas);
     setDelta('deltaCmpUPT',     cmpUPT,     avgUPT);
@@ -2851,6 +3060,8 @@ function renderTabla() {
     setDelta('deltaCmpTickets', cmpTickets, totalTickets);
     if (cmpMargen !== null && globalMargen !== null)
       setDelta('deltaCmpMargen', cmpMargen, globalMargen);
+    if (cmpDcto !== null && globalDcto !== null)
+      setDelta('deltaCmpDctoProm', cmpDcto, globalDcto);
 
     // Cumplimiento corrido comparación
     const cumplCmpRes = calcularCumplimiento(cmpVentas, sc.desde, sc.hasta, getCanalEfectivo());
@@ -2975,7 +3186,7 @@ function sortBy(field) {
     select.value = newVal;
     sortAsc = false;
   }
-  renderTabla();
+  renderVistaActual();
 }
 
 function toggleMetas() {
@@ -2988,7 +3199,7 @@ function applyMetas() {
   metas.avt = parseFloat(document.getElementById('metaAVT').value) || 250000;
   metas.ventas = parseFloat(document.getElementById('metaVentas').value) || 5000000;
   toggleMetas();
-  renderTabla();
+  renderVistaActual();
 }
 
 // ═══════════════════════════════════════════
@@ -3181,6 +3392,7 @@ function procesarDesdeSupabase(rows) {
       cantidad:          Number(r.cantidad)   || 0,
       costoMP:           Number(r.costo_mp)   || 0,
       valorNeto:         Number(r.valor_neto) || 0,
+      precioUnit:        Number(r.precio_unit) || 0,
       esVendedorInterno: esInterno,
     });
   }
@@ -3279,6 +3491,7 @@ async function cargarDesdeSupabase() {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('errorCarga').style.display   = 'none';
     document.getElementById('dashboard').style.display    = 'block';
+    document.getElementById('sidebarNav').style.display   = 'flex';
 
     // Fecha más reciente de los datos — para popup y para default
     const fechasValidas = rawData.map(r => r.fecha).filter(Boolean);
@@ -3301,7 +3514,7 @@ async function cargarDesdeSupabase() {
     document.getElementById('lastUpdate').textContent =
       `Actualizado: ${now.toLocaleDateString('es-CO')} ${now.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}`;
 
-    try { renderTabla(); } catch(e) { console.error('THM renderTabla error:', e); }
+    try { renderVistaActual(); } catch(e) { console.error('THM renderTabla error:', e); }
 
     // Popup con fecha más reciente de los datos
     if (maxFechaData) {
@@ -3398,7 +3611,8 @@ async function confirmarUpload() {
         desc_item:   r.descItem,
         cantidad:    r.cantidad,
         costo_mp:    r.costoMP,
-        valor_neto:  r.valorNeto
+        valor_neto:  r.valorNeto,
+        precio_unit: r.precioUnit
       };
     });
 
